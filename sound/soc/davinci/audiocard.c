@@ -43,26 +43,11 @@ static int snd_rpi_audiocard_init(struct snd_soc_pcm_runtime *rtd)
 
 	// set codec DAI slots, 8 channels, all channels are enabled
 	// codec driver ignores TX / RX mask and width
-	ret = snd_soc_dai_set_tdm_slot(codec_dai, 0xFF, 0xFF, 2, 32);
+	ret = snd_soc_dai_set_tdm_slot(codec_dai, 0xFF, 0xFF, 8, 32);
 	if (ret < 0){
 		dev_err(codec->dev, "Unable to set AD193x TDM slots.");
 		return ret;
 	}
-
-	// (ad193x driver only supports SND_SOC_DAIFMT_DSP_A and SND_SOC_DAIFMT_I2S with TDM)
-	/*ret = snd_soc_dai_set_fmt(codec_dai, SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_IF | SND_SOC_DAIFMT_CBM_CFM);
-	if (ret < 0){
-		dev_err(codec->dev, "Unable to set codec DAI format.");
-		return ret;
-	}*/
-
-	// cpu DAI only supports SND_SOC_DAIFMT_I2S (see bcm2835-i2s.c)
-	// TODO: for multichannel support, platform driver have to be modified
-	/*ret = snd_soc_dai_set_fmt(cpu_dai, SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF | SND_SOC_DAIFMT_CBM_CFM);
-	if (ret < 0){
-		dev_err(card->dev, "Unable to set cpu DAI format.");
-		return ret;
-	}*/
 
 	return 0;
 }
@@ -89,7 +74,9 @@ static int snd_rpi_audiocard_hw_params(struct snd_pcm_substream *substream,
 	unsigned int sample_bits = snd_pcm_format_physical_width(params_format(params));
 	dev_dbg(codec->dev, "audiocard hwparams(): sample_bits from params: %d\n", sample_bits);
 
-	return snd_soc_dai_set_bclk_ratio(cpu_dai, 32*2); //64 Bit for 2 channels
+
+
+	return snd_soc_dai_set_bclk_ratio(cpu_dai, 32*2); //64 Bit for 2 channels with fixes width
 }
 
 /* startup */
@@ -120,10 +107,10 @@ static struct snd_soc_dai_link snd_rpi_audiocard_dai[] = {
 	{
 		.name = "AudioCard",
 		.stream_name = "AudioCard HiFi",
-		.cpu_dai_name = "bcm2708-i2s.0",
+		.cpu_dai_name = "davinci-mcasp.0",
 		.codec_dai_name ="ad193x-hifi",
-		.platform_name = "bcm2708-i2s.0",
-		.codec_name = "spi0.0", //CS GPIO 8 
+		.platform_name = "davinci-mcasp.0",
+		.codec_name = "spi0.0", //CS GPIO 8  TODO: Modify for BBB
 		.dai_fmt = AUDIOCARD_AD193X_DAIFMT,
 		.ops = &snd_rpi_audiocard_ops,
 		.init = snd_rpi_audiocard_init,
