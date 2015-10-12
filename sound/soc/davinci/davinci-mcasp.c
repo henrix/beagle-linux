@@ -1188,6 +1188,20 @@ static void davinci_mcasp_shutdown(struct snd_pcm_substream *substream,
 		mcasp->channels = 0;
 }
 
+/* TODO: Add extra function for TDM init. */
+static int davinci_mcasp_set_tdm_slot(struct snd_soc_dai *dai, unsigned int tx_mask,
+	unsigned int rx_mask, int slots, int width) {
+
+	/* May not need (not tested) */
+	struct davinci_mcasp *mcasp = snd_soc_dai_get_drvdata(cpu_dai);
+	mcasp->tdm_slots = slots;
+	davinci_config_channel_size(mcasp, width);
+
+	/* May need to set TDM registers here. */
+
+	return 0;
+}
+
 static const struct snd_soc_dai_ops davinci_mcasp_dai_ops = {
 	.startup	= davinci_mcasp_startup,
 	.shutdown	= davinci_mcasp_shutdown,
@@ -1196,6 +1210,8 @@ static const struct snd_soc_dai_ops davinci_mcasp_dai_ops = {
 	.set_fmt	= davinci_mcasp_set_dai_fmt,
 	.set_clkdiv	= davinci_mcasp_set_clkdiv,
 	.set_sysclk	= davinci_mcasp_set_sysclk,
+	.set_tdm_slot = davinci_mcasp_set_tdm_slot,
+	/* TODO: Implement channel map here. */
 };
 
 static int davinci_mcasp_dai_probe(struct snd_soc_dai *dai)

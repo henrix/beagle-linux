@@ -74,8 +74,7 @@ static int snd_rpi_audiocard_hw_params(struct snd_pcm_substream *substream,
 	unsigned int sample_bits = snd_pcm_format_physical_width(params_format(params));
 	dev_dbg(codec->dev, "audiocard hwparams(): sample_bits from params: %d\n", sample_bits);
 
-
-
+	//Can be wrong for davinci-mcasp (not tested)
 	return snd_soc_dai_set_bclk_ratio(cpu_dai, 32*2); //64 Bit for 2 channels with fixes width
 }
 
