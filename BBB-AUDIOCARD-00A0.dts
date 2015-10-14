@@ -22,15 +22,22 @@
 	/* state the resources this cape uses */
 	exclusive-use =
 		/* the pin header uses */
+
+		/* audio */
 		"P8.31",	/* mcasp0_axr1 */
 		"P8.33",	/* mcasp0_fsr */
 		"P8.35",	/* mcasp0_aclkr */
 		"P8.36",	/* mcasp0_axr0  */
 		"P8.37",	/* mcasp0_aclkx */
 		"P8.38",	/* mcasp0_fsx  */
+		/* spi */
+		"P9.28",	/* spi1_cs0 */
+		"P9.29",	/* spi1_d0 */
+		"P9.30",	/* spi1_d1 */
+		"P9.31",	/* spi1_sclk */
 		/* the hardware ip uses */
-		"gpio1_18", "gpio1_19", /* TODO: Modify for audiocard */
-		"mcasp0";
+		"mcasp0",
+		"spi1";
 
 	fragment@0 {
 		/* muxRegOffset can be determined with node.js on BB with "require('bonescript').bone.pins.P9_14.muxRegOffset" */
@@ -42,15 +49,6 @@
 				Settings here were took from BB audio cape overlay.
 			*/
 
-			spi1_pins: pinmux_spi1_pins { 
-				pinctrl-single,pins = <
-					0x194 0x03		/* spi1_d0,		MODE3 | INPUT */
-					0x198 0x23		/* spi1_d1,		MODE3 | OUTPUT */
-					0x19c 0x23		/* spi1_cs0,	MODE3 | OUTPUT */
-					0x190 0x23		/* spi1_sclk,	MODE3 | OUTPUT */
-				>;
-			};
-
 			bone_audiocard_pins: pinmux_bone_audiocard_pins {
 				pinctrl-single,pins = <
 					0x0d8 0x03		/* mcasp0_axr1,		MODE3 | INPUT */
@@ -59,6 +57,15 @@
 					0x0c8 0x23		/* mcasp0_axr0, 	MODE3 | OUTPUT */
 					0x0c0 0x03		/* mcasp0_aclkx,	MODE3 | INPUT */
 					0x0c4 0x03		/* mcasp0_fsx,		MODE3 | INPUT */
+				>;
+			};
+
+			spi1_pins: pinmux_spi1_pins { 
+				pinctrl-single,pins = <
+					0x194 0x03		/* spi1_d0,		MODE3 | INPUT */
+					0x198 0x23		/* spi1_d1,		MODE3 | OUTPUT */
+					0x19c 0x23		/* spi1_cs0,	MODE3 | OUTPUT */
+					0x190 0x23		/* spi1_sclk,	MODE3 | OUTPUT */
 				>;
 			};
 		};
@@ -112,6 +119,8 @@
 		__overlay__ {
 			sound {
 				compatible = "audiocard,audiocard";
+				i2s-controller = <&mcasp0>;
+				status = "okay";
 		};
 
 	};
