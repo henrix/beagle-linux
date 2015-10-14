@@ -49,6 +49,8 @@ static int snd_rpi_audiocard_init(struct snd_soc_pcm_runtime *rtd)
 		return ret;
 	}
 
+	/* May also set tdm slots of davinci-mcasp here. */
+
 	return 0;
 }
 
@@ -108,8 +110,8 @@ static struct snd_soc_dai_link snd_rpi_audiocard_dai[] = {
 		.stream_name = "AudioCard HiFi",
 		.cpu_dai_name = "davinci-mcasp.0",
 		.codec_dai_name ="ad193x-hifi",
-		.platform_name = "davinci-mcasp.0",
-		.codec_name = "spi0.0", //CS GPIO 8  TODO: Modify for BBB
+		.platform_name = "davinci-mcasp.0", //P8 in mode 3
+		.codec_name = "spi1.0", //SPI1.CS0 (CS Pin: P9.28, D0 Pin: P9.29, D1 Pin: P9.30, CLK Pin: P9.31 (P9 in Mode 3))
 		.dai_fmt = AUDIOCARD_AD193X_DAIFMT,
 		.ops = &snd_rpi_audiocard_ops,
 		.init = snd_rpi_audiocard_init,

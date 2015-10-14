@@ -1193,7 +1193,7 @@ static int davinci_mcasp_set_tdm_slot(struct snd_soc_dai *dai, unsigned int tx_m
 	unsigned int rx_mask, int slots, int width) {
 
 	/* May not need (not tested) */
-	struct davinci_mcasp *mcasp = snd_soc_dai_get_drvdata(cpu_dai);
+	struct davinci_mcasp *mcasp = snd_soc_dai_get_drvdata(dai);
 	mcasp->tdm_slots = slots;
 	davinci_config_channel_size(mcasp, width);
 
