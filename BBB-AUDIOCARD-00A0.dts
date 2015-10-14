@@ -121,7 +121,7 @@
 				compatible = "audiocard,audiocard";
 				i2s-controller = <&mcasp0>;
 				status = "okay";
+			};
 		};
-
 	};
 };
