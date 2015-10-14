@@ -1,0 +1,118 @@
+/*
+ * Device tree overlay for AudioCard
+ *
+ * Author: Henrik Langer <henni19790@googlemail.com>
+ * 		   based on 
+ *				BeagleBone audio cape device tree overlay
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ */
+/dts-v1/;
+/plugin/;
+
+/ {
+	compatible = "ti,beaglebone", "ti,beaglebone-black", "ti,beaglebone-green";
+
+	/* identification */
+	part-number = "BBB-AUDIOCARD";
+	version = "00A0", "A0";
+
+	/* state the resources this cape uses */
+	exclusive-use =
+		/* the pin header uses */
+		"P8.31",	/* mcasp0_axr1 */
+		"P8.33",	/* mcasp0_fsr */
+		"P8.35",	/* mcasp0_aclkr */
+		"P8.36",	/* mcasp0_axr0  */
+		"P8.37",	/* mcasp0_aclkx */
+		"P8.38",	/* mcasp0_fsx  */
+		/* the hardware ip uses */
+		"gpio1_18", "gpio1_19", /* TODO: Modify for audiocard */
+		"mcasp0";
+
+	fragment@0 {
+		/* muxRegOffset can be determined with node.js on BB with "require('bonescript').bone.pins.P9_14.muxRegOffset" */
+		target = <&am33xx_pinmux>;
+		__overlay__ {
+			/* 
+				Not sure about the pin configurations here.
+				Comments in BB audio cape overlay don't correspond to p. 101 in BBB SRM (see "Pin Usage")
+				Settings here were took from BB audio cape overlay.
+			*/
+
+			spi1_pins: pinmux_spi1_pins { 
+				pinctrl-single,pins = <
+					0x194 0x03		/* spi1_d0,		MODE3 | INPUT */
+					0x198 0x23		/* spi1_d1,		MODE3 | OUTPUT */
+					0x19c 0x23		/* spi1_cs0,	MODE3 | OUTPUT */
+					0x190 0x23		/* spi1_sclk,	MODE3 | OUTPUT */
+				>;
+			};
+
+			bone_audiocard_pins: pinmux_bone_audiocard_pins {
+				pinctrl-single,pins = <
+					0x0d8 0x03		/* mcasp0_axr1,		MODE3 | INPUT */
+					0x0d4 0x03		/* mcasp0_fsr,		MODE3 | INPUT */
+					0x0d0 0x03		/* mcasp0_aclkr,	MODE3 | INPUT */
+					0x0c8 0x23		/* mcasp0_axr0, 	MODE3 | OUTPUT */
+					0x0c0 0x03		/* mcasp0_aclkx,	MODE3 | INPUT */
+					0x0c4 0x03		/* mcasp0_fsx,		MODE3 | INPUT */
+				>;
+			};
+		};
+	};
+
+	fragment@1 {
+		target = <&spi1>;
+		__overlay__ {
+			/* needed to avoid dtc warning */
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "okay";
+
+			ad913x: ad193x@0{
+				compatible = "analog,ad1938";
+				reg = <0>;
+				status = "okay";
+
+				pinctrl-names = "default";
+				pinctrl-0 = <&spi1_pins>;
+				spi-max-frequency = <10000000>;
+			};
+
+		};
+	};
+
+	fragment@2 {
+		target = <&mcasp0>;
+		__overlay__ {
+			pinctrl-names = "default";
+			pinctrl-0 = <&bone_audiocard_pins>;
+
+			status = "okay";
+
+			op-mode = <0>;          /* MCASP_IIS_MODE */
+			tdm-slots = <8>;
+			num-serializer = <16>;
+			serial-dir = <  /* 0: INACTIVE, 1: TX, 2: RX */
+				1 2 0 0
+				0 0 0 0
+				0 0 0 0
+				0 0 0 0
+			>;
+			tx-num-evt = <1>;
+			rx-num-evt = <1>;
+		};
+	};
+
+	fragment@3 {
+		target = <&ocp>;
+		__overlay__ {
+			sound {
+				compatible = "audiocard,audiocard";
+		};
+
+	};
+};
