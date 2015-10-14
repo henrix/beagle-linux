@@ -2,7 +2,6 @@
  * ASoC Driver for AudioCard
  *
  * Author:	Henrik Langer <henni19790@googlemail.com>
- *		Copyright 2015
  *        	based on 
  * 				RaspiDAC3 driver by Jan Grulich <jan@grulich.eu>,
  *				BlackFin-AD193x driver by Barry Song <Barry.Song@analog.com>
