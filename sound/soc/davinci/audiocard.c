@@ -109,7 +109,7 @@ static struct snd_soc_dai_link snd_rpi_audiocard_dai[] = {
 		.stream_name = "AudioCard HiFi",
 		.cpu_dai_name = "davinci-mcasp.0",
 		.codec_dai_name ="ad193x-hifi",
-		.platform_name = "davinci-mcasp.0", //P8 in mode 3
+		.platform_name = "davinci-mcasp.0",
 		.codec_name = "spi1.0", //SPI1.CS0 (CS Pin: P9.28, D0 Pin: P9.29, D1 Pin: P9.30, CLK Pin: P9.31 (P9 in Mode 3))
 		.dai_fmt = AUDIOCARD_AD193X_DAIFMT,
 		.ops = &snd_rpi_audiocard_ops,
@@ -134,21 +134,19 @@ static int snd_rpi_audiocard_probe(struct platform_device *pdev)
 	if (pdev->dev.of_node) {
 	    struct device_node *i2s_node;
 	    struct snd_soc_dai_link *dai = &snd_rpi_audiocard_dai[0];
-	    i2s_node = of_parse_phandle(pdev->dev.of_node,
-					"i2s-controller", 0);
+	    i2s_node = of_parse_phandle(pdev->dev.of_node, "i2s-controller", 0);
 
 	    if (i2s_node) {
-		dai->cpu_dai_name = NULL;
-		dai->cpu_of_node = i2s_node;
-		dai->platform_name = NULL;
-		dai->platform_of_node = i2s_node;
+			dai->cpu_dai_name = NULL;
+			dai->cpu_of_node = i2s_node;
+			dai->platform_name = NULL;
+			dai->platform_of_node = i2s_node;
 	    }
 	}
 
 	ret = snd_soc_register_card(&snd_rpi_audiocard);
 	if (ret)
-		dev_err(&pdev->dev,
-			"snd_soc_register_card() for ad1938 failed: %d\n", ret);
+		dev_err(&pdev->dev, "snd_soc_register_card() for ad1938 failed: %d\n", ret);
 
 	return ret;
 }
