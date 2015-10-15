@@ -26,13 +26,13 @@
 		/* audio */
 		"P9.30",	/* mcasp0_axr0 */
 		"P9.28",	/* mcasp0_axr2 */
-		"P9.42",	/* mcasp0_aclkr */
+		"P9.12",	/* mcasp0_aclkr */
 		"P9.27",	/* mcasp0_fsr */
 		/* spi */
-		"P9.17",	/* spi0_cs0 */
+		"P9.22",	/* spi0_sclk */
 		"P9.21",	/* spi0_d0 */
 		"P9.18",	/* spi0_d1 */
-		"P9.22",	/* spi0_sclk */
+		"P9.17",	/* spi0_cs0 */
 		/* the hardware ip uses */
 		"mcasp0",
 		"spi0";
@@ -47,19 +47,19 @@
 
 			bone_audiocard_pins: pinmux_bone_audiocard_pins {
 				pinctrl-single,pins = <
-					0x0d8 0x03		/* mcasp0_axr1,		MODE3 | INPUT */
-					0x0d4 0x03		/* mcasp0_fsr,		MODE3 | INPUT */
-					0x0d0 0x03		/* mcasp0_aclkr,	MODE3 | INPUT */
-					0x0c8 0x23		/* mcasp0_axr0, 	MODE3 | OUTPUT */
+					0x198 0x00		/* mcasp0_axr0, 	MODE0 | OUTPUT_PULLDOWN | P9_30 */
+					0x19c 0x22		/* mcasp0_axr2,		MODE2 | INPUT | P9_28 */
+					0x078 0x20		/* mcasp0_aclkr,	MODE0 | INPUT | P9_12 */
+					0x1a4 0x20		/* mcasp0_fsr,		MODE0 | INPUT | P9_27 */
 				>;
 			};
 
 			spi0_pins: pinmux_spi0_pins { 
 				pinctrl-single,pins = <
 					0x150 0x10  /* spi0_sclk.spi0_sclk, MODE0 | OUTPUT_PULLUP | SPI0_SCLK P9_22 */
-                    0x154 0x30  /* spi0_d0.spi0_d0, MODE0 | INPUT_PULLUP | SPI0_MISO P9_21 */
-                    0x158 0x10  /* spi0_d0.spi0_d1, MODE0 | OUTPUT_PULLUP | SPI0_MOSI P9_18 */
-                    0x15c 0x10  /* spi0_cs0.spi0_cs0, MODE0 | OUTPUT_PULLUP | SPI0_CS0 P9_17 */
+                    0x154 0x30  /* spi0_d0.spi0_d0, 	MODE0 | INPUT_PULLUP | SPI0_MISO P9_21 */
+                    0x158 0x10  /* spi0_d0.spi0_d1, 	MODE0 | OUTPUT_PULLUP | SPI0_MOSI P9_18 */
+                    0x15c 0x10  /* spi0_cs0.spi0_cs0, 	MODE0 | OUTPUT_PULLUP | SPI0_CS0 P9_17 */
 				>;
 			};
 		};
