@@ -31,13 +31,13 @@
 		"P8.37",	/* mcasp0_aclkx */
 		"P8.38",	/* mcasp0_fsx  */
 		/* spi */
-		"P9.28",	/* spi1_cs0 */
-		"P9.29",	/* spi1_d0 */
-		"P9.30",	/* spi1_d1 */
-		"P9.31",	/* spi1_sclk */
+		"P9.17",	/* spi0_cs0 */
+		"P9.21",	/* spi0_d0 */
+		"P9.18",	/* spi0_d1 */
+		"P9.22",	/* spi0_sclk */
 		/* the hardware ip uses */
 		"mcasp0",
-		"spi1";
+		"spi0";
 
 	fragment@0 {
 		/* muxRegOffset can be determined with node.js on BB with "require('bonescript').bone.pins.P9_14.muxRegOffset" */
@@ -60,19 +60,19 @@
 				>;
 			};
 
-			spi1_pins: pinmux_spi1_pins { 
+			spi0_pins: pinmux_spi0_pins { 
 				pinctrl-single,pins = <
-					0x194 0x03		/* spi1_d0,		MODE3 | INPUT */
-					0x198 0x23		/* spi1_d1,		MODE3 | OUTPUT */
-					0x19c 0x23		/* spi1_cs0,	MODE3 | OUTPUT */
-					0x190 0x23		/* spi1_sclk,	MODE3 | OUTPUT */
+					0x154 0x03		/* spi0_d0,		MODE3 | INPUT */
+					0x158 0x23		/* spi0_d1,		MODE3 | OUTPUT */
+					0x15c 0x23		/* spi0_cs0,	MODE3 | OUTPUT */
+					0x150 0x23		/* spi0_sclk,	MODE3 | OUTPUT */
 				>;
 			};
 		};
 	};
 
 	fragment@1 {
-		target = <&spi1>;
+		target = <&spi0>;
 		__overlay__ {
 			/* needed to avoid dtc warning */
 			#address-cells = <1>;
@@ -85,7 +85,7 @@
 				status = "okay";
 
 				pinctrl-names = "default";
-				pinctrl-0 = <&spi1_pins>;
+				pinctrl-0 = <&spi0_pins>;
 				spi-max-frequency = <10000000>;
 			};
 
