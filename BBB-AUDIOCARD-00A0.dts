@@ -24,12 +24,10 @@
 		/* the pin header uses */
 
 		/* audio */
-		"P8.31",	/* mcasp0_axr1 */
-		"P8.33",	/* mcasp0_fsr */
-		"P8.35",	/* mcasp0_aclkr */
-		"P8.36",	/* mcasp0_axr0  */
-		"P8.37",	/* mcasp0_aclkx */
-		"P8.38",	/* mcasp0_fsx  */
+		"P9.30",	/* mcasp0_axr0 */
+		"P9.28",	/* mcasp0_axr2 */
+		"P9.42",	/* mcasp0_aclkr */
+		"P9.27",	/* mcasp0_fsr */
 		/* spi */
 		"P9.17",	/* spi0_cs0 */
 		"P9.21",	/* spi0_d0 */
@@ -44,9 +42,7 @@
 		target = <&am33xx_pinmux>;
 		__overlay__ {
 			/* 
-				Not sure about the pin configurations here.
-				Comments in BB audio cape overlay don't correspond to p. 101 in BBB SRM (see "Pin Usage")
-				Settings here were took from BB audio cape overlay.
+				Note: Pin configuration of BB-BONE-AUDI-02-00A0 doesn't correspond to p. 101 in BBB SRM
 			*/
 
 			bone_audiocard_pins: pinmux_bone_audiocard_pins {
@@ -55,17 +51,15 @@
 					0x0d4 0x03		/* mcasp0_fsr,		MODE3 | INPUT */
 					0x0d0 0x03		/* mcasp0_aclkr,	MODE3 | INPUT */
 					0x0c8 0x23		/* mcasp0_axr0, 	MODE3 | OUTPUT */
-					0x0c0 0x03		/* mcasp0_aclkx,	MODE3 | INPUT */
-					0x0c4 0x03		/* mcasp0_fsx,		MODE3 | INPUT */
 				>;
 			};
 
 			spi0_pins: pinmux_spi0_pins { 
 				pinctrl-single,pins = <
-					0x154 0x00		/* spi0_d0,		MODE0 | INPUT */
-					0x158 0x20		/* spi0_d1,		MODE0 | OUTPUT */
-					0x15c 0x20		/* spi0_cs0,	MODE0 | OUTPUT */
-					0x150 0x20		/* spi0_sclk,	MODE0 | OUTPUT */
+					0x150 0x10  /* spi0_sclk.spi0_sclk, MODE0 | OUTPUT_PULLUP | SPI0_SCLK P9_22 */
+                    0x154 0x30  /* spi0_d0.spi0_d0, MODE0 | INPUT_PULLUP | SPI0_MISO P9_21 */
+                    0x158 0x10  /* spi0_d0.spi0_d1, MODE0 | OUTPUT_PULLUP | SPI0_MOSI P9_18 */
+                    0x15c 0x10  /* spi0_cs0.spi0_cs0, MODE0 | OUTPUT_PULLUP | SPI0_CS0 P9_17 */
 				>;
 			};
 		};
