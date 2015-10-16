@@ -25,9 +25,11 @@
 
 		/* audio */
 		"P9.30",	/* mcasp0_axr0 */
-		"P9.28",	/* mcasp0_axr2 */
+		"P9.28",	/* mcasp0_axr2 (MODE2) */
 		"P9.12",	/* mcasp0_aclkr */
 		"P9.27",	/* mcasp0_fsr */
+		"P9.31",	/* mcasp0_aclkx */
+		"P9.29",	/* mcasp0_fsx */
 		/* spi */
 		"P9.22",	/* spi0_sclk */
 		"P9.21",	/* spi0_d0 */
@@ -47,16 +49,18 @@
 
 			bone_audiocard_pins: pinmux_bone_audiocard_pins {
 				pinctrl-single,pins = <
-					0x198 0x00		/* mcasp0_axr0, 	MODE0 | OUTPUT_PULLDOWN | P9_30 */
-					0x19c 0x22		/* mcasp0_axr2,		MODE2 | INPUT | P9_28 */
-					0x078 0x20		/* mcasp0_aclkr,	MODE0 | INPUT | P9_12 */
-					0x1a4 0x20		/* mcasp0_fsr,		MODE0 | INPUT | P9_27 */
+					0x198 0x00	/* mcasp0_axr0, 		MODE0 | OUTPUT_PULLDOWN | P9_30 */
+					0x19c 0x22	/* mcasp0_axr2,			MODE2 | INPUT | P9_28 */
+					0x078 0x20	/* mcasp0_aclkr,		MODE0 | INPUT | P9_12 */
+					0x1a4 0x20	/* mcasp0_fsr,			MODE0 | INPUT | P9_27 */
+					0x190 0x20	/* mcasp0_aclkx, 		MODE0 | INPUT | P9_31 */
+					0x194 0x20	/* mcasp0_fsx 			MODE0 | INPUT | P9_29 */
 				>;
 			};
 
-			spi0_pins: pinmux_spi0_pins { 
+			bb_spi0_pins: pinmux_bb_spi0_pins { 
 				pinctrl-single,pins = <
-					0x150 0x10  /* spi0_sclk.spi0_sclk, MODE0 | OUTPUT_PULLUP | SPI0_SCLK P9_22 */
+					0x150 0x30  /* spi0_sclk.spi0_sclk, MODE0 | OUTPUT_PULLUP | SPI0_SCLK P9_22 */
                     0x154 0x30  /* spi0_d0.spi0_d0, 	MODE0 | INPUT_PULLUP | SPI0_MISO P9_21 */
                     0x158 0x10  /* spi0_d0.spi0_d1, 	MODE0 | OUTPUT_PULLUP | SPI0_MOSI P9_18 */
                     0x15c 0x10  /* spi0_cs0.spi0_cs0, 	MODE0 | OUTPUT_PULLUP | SPI0_CS0 P9_17 */
@@ -68,19 +72,18 @@
 	fragment@1 {
 		target = <&spi0>;
 		__overlay__ {
-			/* needed to avoid dtc warning */
-			#address-cells = <1>;
-			#size-cells = <0>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&bb_spi0_pins>;
 			status = "okay";
 
-			ad913x: ad193x@0{
-				compatible = "analog,ad1938";
-				reg = <0>;
-				status = "okay";
+			/* avoid dtc warnings */
+			#address-cells = <1>;
+			#size-cells = <0>;
 
-				pinctrl-names = "default";
-				pinctrl-0 = <&spi0_pins>;
+			ad913x: ad193x@0{
 				spi-max-frequency = <10000000>;
+				reg = <0>;
+				compatible = "analog,ad1938";
 			};
 
 		};
@@ -98,7 +101,7 @@
 			tdm-slots = <8>;
 			num-serializer = <16>;
 			serial-dir = <  /* 0: INACTIVE, 1: TX, 2: RX */
-				1 2 0 0
+				1 0 2 0
 				0 0 0 0
 				0 0 0 0
 				0 0 0 0
@@ -113,7 +116,8 @@
 		__overlay__ {
 			sound {
 				compatible = "audiocard,audiocard";
-				i2s-controller = <&mcasp0>;
+				audio-codec = <&ad913x>;
+				mcasp-controller = <&mcasp0>;
 				status = "okay";
 			};
 		};
