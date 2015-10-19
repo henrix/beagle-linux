@@ -93,8 +93,8 @@ config  SND_DA850_SOC_EVM
 
 config	SND_DAVINCI_SOC_AUDIOCARD
 	tristate "Support for AudioCard"
-	depends on SOC_AM33XX
+	depends on SND_AM33XX_SOC
 	select SND_DAVINCI_SOC_MCASP
-	select SND_SOC_AD193X
+	select SND_SOC_AD193X_SPI
 	help
 	  Say Y or M if you want to add support for AudioCard.
