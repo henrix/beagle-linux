@@ -96,5 +96,6 @@ config	SND_DAVINCI_SOC_AUDIOCARD
 	depends on SND_AM33XX_SOC
 	select SND_DAVINCI_SOC_MCASP
 	select SND_SOC_AD193X_SPI
+	select SND_DAVINCI_SOC
 	help
 	  Say Y or M if you want to add support for AudioCard.

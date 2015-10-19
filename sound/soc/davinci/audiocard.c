@@ -220,7 +220,7 @@ static int snd_davinci_audiocard_probe(struct platform_device *pdev)
 
 	snd_davinci_audiocard.dev = &pdev->dev;
 
-	mclk = devm_clk_get(&pdev->dev, "mclk");
+	/*mclk = devm_clk_get(&pdev->dev, "mclk");
 	if (PTR_ERR(mclk) == -EPROBE_DEFER) {
 		return -EPROBE_DEFER;
 	} else if (IS_ERR(mclk)) {
