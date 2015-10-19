@@ -495,6 +495,8 @@ static int davinci_mcasp_set_dai_fmt(struct snd_soc_dai *cpu_dai,
 
 		mcasp_clr_bits(mcasp, DAVINCI_MCASP_PDIR_REG,
 			       ACLKX | AHCLKX | AFSX | ACLKR | AHCLKR | AFSR);
+		/*mcasp_clr_bits(mcasp, DAVINCI_MCASP_PDIR_REG,
+			       ACLKX | AFSX | ACLKR | AFSR);*/
 		mcasp->bclk_master = 0;
 		break;
 	default:

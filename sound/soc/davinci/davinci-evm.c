@@ -70,6 +70,7 @@ static int evm_hw_params(struct snd_pcm_substream *substream,
 	if (ret < 0)
 		return ret;
 
+	dev_dbg(cpu_dai->dev, "davinci_evm_hw_params(): CPU DAI sysclk = %d", sysclk);
 	/* set the CPU system clock */
 	ret = snd_soc_dai_set_sysclk(cpu_dai, 0, sysclk, SND_SOC_CLOCK_OUT);
 	if (ret < 0)

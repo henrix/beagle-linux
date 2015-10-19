@@ -24,12 +24,13 @@
 		/* the pin header uses */
 
 		/* audio */
-		"P9.30",	/* mcasp0_axr0 */
-		"P9.28",	/* mcasp0_axr2 (MODE2) */
+		"P9.30",	/* mcasp0_axr0 */ /* AUDIO IN */
+		"P9.28",	/* mcasp0_axr2 (MODE2) */ /* AUDIO OUT */
 		"P9.12",	/* mcasp0_aclkr */
 		"P9.27",	/* mcasp0_fsr */
 		"P9.31",	/* mcasp0_aclkx */
 		"P9.29",	/* mcasp0_fsx */
+		"P9.25",	/* mcasp0: mcasp0_ahclkx */
 		/* spi */
 		"P9.22",	/* spi0_sclk */
 		"P9.21",	/* spi0_d0 */
@@ -49,18 +50,20 @@
 
 			bone_audiocard_pins: pinmux_bone_audiocard_pins {
 				pinctrl-single,pins = <
-					0x198 0x00	/* mcasp0_axr0, 		MODE0 | OUTPUT_PULLDOWN | P9_30 */
-					0x19c 0x22	/* mcasp0_axr2,			MODE2 | INPUT | P9_28 */
-					0x078 0x20	/* mcasp0_aclkr,		MODE0 | INPUT | P9_12 */
-					0x1a4 0x20	/* mcasp0_fsr,			MODE0 | INPUT | P9_27 */
-					0x190 0x20	/* mcasp0_aclkx, 		MODE0 | INPUT | P9_31 */
-					0x194 0x20	/* mcasp0_fsx 			MODE0 | INPUT | P9_29 */
+					0x1ac 0x20  /* mcasp0_ahclkx,		MODE0 | INPUT_PULLDOWN | P9_25 */
+					0x198 0x20	/* mcasp0_axr0, 		MODE0 | INPUT_PULLDOWN | P9_30 */
+					0x19c 0x02	/* mcasp0_axr2,			MODE2 | OUTPUT_PULLDOWN | P9_28 */
+					0x078 0x20	/* mcasp0_aclkr,		MODE0 | INPUT_PULLDOWN | P9_12 */
+					0x1a4 0x20	/* mcasp0_fsr,			MODE0 | INPUT_PULLDOWN | P9_27 */
+					0x190 0x20	/* mcasp0_aclkx, 		MODE0 | INPUT_PULLDOWN | P9_31 */
+					0x194 0x20	/* mcasp0_fsx 			MODE0 | INPUT_PULLDOWN | P9_29 */
+					0x06c 0x07  /* disable internal 24.576 MHz oscillator */
 				>;
 			};
 
 			bb_spi0_pins: pinmux_bb_spi0_pins { 
 				pinctrl-single,pins = <
-					0x150 0x30  /* spi0_sclk.spi0_sclk, MODE0 | OUTPUT_PULLUP | SPI0_SCLK P9_22 */
+					0x150 0x30  /* spi0_sclk.spi0_sclk, MODE0 | INPUT_PULLUP | SPI0_SCLK P9_22 */
                     0x154 0x30  /* spi0_d0.spi0_d0, 	MODE0 | INPUT_PULLUP | SPI0_MISO P9_21 */
                     0x158 0x10  /* spi0_d0.spi0_d1, 	MODE0 | OUTPUT_PULLUP | SPI0_MOSI P9_18 */
                     0x15c 0x10  /* spi0_cs0.spi0_cs0, 	MODE0 | OUTPUT_PULLUP | SPI0_CS0 P9_17 */
@@ -92,16 +95,17 @@
 	fragment@2 {
 		target = <&mcasp0>;
 		__overlay__ {
+			compatible = "ti,da830-mcasp-audio";
 			pinctrl-names = "default";
 			pinctrl-0 = <&bone_audiocard_pins>;
 
 			status = "okay";
 
 			op-mode = <0>;          /* MCASP_IIS_MODE */
-			tdm-slots = <8>;
+			tdm-slots = <2>;
 			num-serializer = <16>;
 			serial-dir = <  /* 0: INACTIVE, 1: TX, 2: RX */
-				1 0 2 0
+				2 0 1 0
 				0 0 0 0
 				0 0 0 0
 				0 0 0 0
@@ -118,6 +122,7 @@
 				compatible = "audiocard,audiocard";
 				audio-codec = <&ad913x>;
 				mcasp-controller = <&mcasp0>;
+				codec-clock-rate = <12288000>;
 				status = "okay";
 			};
 		};

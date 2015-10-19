@@ -21,7 +21,7 @@
 #include <linux/moduleparam.h>
 #include <linux/platform_device.h>
 #include <linux/of_platform.h>
-
+#include <linux/clk.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
@@ -31,6 +31,11 @@
 
 #include "../codecs/ad193x.h"
 
+struct snd_soc_card_drvdata_davinci {
+	struct clk *mclk;
+	unsigned sysclk;
+};
+
 /* sound card init */
 static int snd_davinci_audiocard_init(struct snd_soc_pcm_runtime *rtd)
 {
@@ -38,18 +43,28 @@ static int snd_davinci_audiocard_init(struct snd_soc_pcm_runtime *rtd)
 	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
 	struct snd_soc_dai *codec_dai = rtd->codec_dai;
 	struct snd_soc_codec *codec = rtd->codec;
-	struct snd_soc_card *card = rtd->card;
-	struct ad193x_priv *ad193x = snd_soc_codec_get_drvdata(codec);
+	struct snd_soc_card *soc_card = rtd->card;
+	struct snd_soc_card_drvdata_davinci *drvdata =
+		snd_soc_card_get_drvdata(soc_card);
 
 	// set codec DAI slots, 8 channels, all channels are enabled
 	// codec driver ignores TX / RX mask and width
-	ret = snd_soc_dai_set_tdm_slot(codec_dai, 0xFF, 0xFF, 8, 32);
+	ret = snd_soc_dai_set_tdm_slot(codec_dai, 0xFF, 0xFF, 2, 32);
 	if (ret < 0){
 		dev_err(codec->dev, "Unable to set AD193x TDM slots.");
 		return ret;
 	}
 
 	/* May also set tdm slots of davinci-mcasp here. */
+
+	ret = snd_soc_dai_set_clkdiv(cpu_dai, 0, 1);
+	if (ret < 0)
+		return ret;
+
+	dev_dbg(soc_card->dev, "audiocard_init(): Sysclk from drvdata: %d", drvdata->sysclk);
+	ret = snd_soc_dai_set_sysclk(cpu_dai, 0, drvdata->sysclk, SND_SOC_CLOCK_IN);
+	if (ret < 0)
+		return ret;
 
 	return 0;
 }
@@ -58,32 +73,65 @@ static int snd_davinci_audiocard_init(struct snd_soc_pcm_runtime *rtd)
 static int snd_davinci_audiocard_hw_params(struct snd_pcm_substream *substream,
 				       struct snd_pcm_hw_params *params)
 {
-	int ret;
+	int ret = 0;
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
 	struct snd_soc_dai *codec_dai = rtd->codec_dai;
 	struct snd_soc_codec *codec = rtd->codec;
+	struct snd_soc_card *soc_card = rtd->card;
+	unsigned sysclk = ((struct snd_soc_card_drvdata_davinci *) snd_soc_card_get_drvdata(soc_card))->sysclk; // = 12,244 MHz
+
 
 	// Need to tell the codec what it's system clock is (12.288 MHz crystal)
-	int sysclk = 12288000;
+	int codec_sysclk = 12288000;
+	int cpu_dai_sysclk = 24576000;
 
-	ret = snd_soc_dai_set_sysclk(codec_dai, 0, sysclk, SND_SOC_CLOCK_IN); // clk_id is ignored in ad193x driver
+	ret = snd_soc_dai_set_sysclk(codec_dai, 0, codec_sysclk, SND_SOC_CLOCK_IN); // clk_id and direction is ignored in ad193x driver
 	if (ret < 0){
-		dev_err(codec->dev, "Unable to set AD193x system clock.");
+		dev_err(codec->dev, "Unable to set AD193x system clock: %d", ret);
 		return ret;
 	}
+
+	dev_dbg(cpu_dai->dev, "audiocard_hw_params(): CPU DAI sysclk = %d", sysclk);	
+	ret = snd_soc_dai_set_sysclk(cpu_dai, 0, codec_sysclk, SND_SOC_CLOCK_IN); 
+	if (ret < 0){
+		dev_err(cpu_dai->dev, "Unable to set cpu dai sysclk: %d", ret);
+		return ret;
+	}
+
+	//Set bclk divider
+	/*ret = snd_soc_dai_set_clkdiv(cpu_dai, 1, 256); 
+	if (ret < 0){
+		dev_err(cpu_dai->dev, "Unable to set cpu dai sysclk: %d", ret);
+		return ret;
+	}
+
+	//Set bclk/lrclk ratio to 256 (8 channels)
+	ret = snd_soc_dai_set_clkdiv(cpu_dai, 2, 64); 
+	if (ret < 0){
+		dev_err(cpu_dai->dev, "Unable to set cpu dai sysclk: %d", ret);
+		return ret;
+	}*/
 
 	unsigned int sample_bits = snd_pcm_format_physical_width(params_format(params));
 	dev_dbg(codec->dev, "audiocard hwparams(): sample_bits from params: %d\n", sample_bits);
 
 	//Can be wrong for davinci-mcasp (not tested)
-	return snd_soc_dai_set_bclk_ratio(cpu_dai, 32*2); //64 Bit for 2 channels with fixes width
+	//return snd_soc_dai_set_bclk_ratio(cpu_dai, 32*2); //64 Bit for 2 channels with fixes width
+
+	//May need to set sysclk of cpu dai here
+	return 0;
 }
 
 /* startup */
 static int snd_davinci_audiocard_startup(struct snd_pcm_substream *substream) {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_codec *codec = rtd->codec;
+	struct snd_soc_card *soc_card = rtd->card;
+	struct snd_soc_card_drvdata_davinci *drvdata = snd_soc_card_get_drvdata(soc_card);
+
+	if (drvdata->mclk)
+		return clk_prepare_enable(drvdata->mclk);
 
 	return 0;
 }
@@ -92,6 +140,12 @@ static int snd_davinci_audiocard_startup(struct snd_pcm_substream *substream) {
 static void snd_davinci_audiocard_shutdown(struct snd_pcm_substream *substream) {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_codec *codec = rtd->codec;
+	struct snd_soc_card *soc_card = rtd->card;
+	struct snd_soc_card_drvdata_davinci *drvdata =
+		snd_soc_card_get_drvdata(soc_card);
+
+	if (drvdata->mclk)
+		clk_disable_unprepare(drvdata->mclk);
 }
 
 /* machine stream operations */
@@ -102,7 +156,7 @@ static struct snd_soc_ops snd_davinci_audiocard_ops = {
 };
 
 /* interface setup */
-#define AUDIOCARD_AD193X_DAIFMT ( SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_IF | SND_SOC_DAIFMT_CBM_CFM )
+#define AUDIOCARD_AD193X_DAIFMT ( SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_IB_NF | SND_SOC_DAIFMT_CBM_CFM )
 
 static struct snd_soc_dai_link snd_davinci_audiocard_dai[] = {
 	{
@@ -142,6 +196,8 @@ static int snd_davinci_audiocard_probe(struct platform_device *pdev)
 	const struct of_device_id *match =
 		of_match_device(of_match_ptr(snd_davinci_audiocard_dt_ids), &pdev->dev);
 	struct snd_soc_dai_link *dai = (struct snd_soc_dai_link *) match->data;
+	struct snd_soc_card_drvdata_davinci *drvdata = NULL;
+	struct clk *mclk;
 	int ret = 0;
 
 	dev_dbg(&pdev->dev, "davinci_audiocard_probe called.\n");
@@ -164,20 +220,45 @@ static int snd_davinci_audiocard_probe(struct platform_device *pdev)
 
 	snd_davinci_audiocard.dev = &pdev->dev;
 
-	/*if (pdev->dev.of_node) {
-	    struct device_node *i2s_node;
-	    struct snd_soc_dai_link *dai = &snd_davinci_audiocard_dai[0];
-	    i2s_node = of_parse_phandle(pdev->dev.of_node, "i2s-controller", 0);
+	mclk = devm_clk_get(&pdev->dev, "mclk");
+	if (PTR_ERR(mclk) == -EPROBE_DEFER) {
+		return -EPROBE_DEFER;
+	} else if (IS_ERR(mclk)) {
+		dev_dbg(&pdev->dev, "mclk not found.\n");
+		mclk = NULL;
+	}
 
-	    if (i2s_node) {
-			dai->cpu_dai_name = NULL;
-			dai->cpu_of_node = i2s_node;
-			dai->platform_name = NULL;
-			dai->platform_of_node = i2s_node;
-	    }
-	}*/
+	drvdata = devm_kzalloc(&pdev->dev, sizeof(*drvdata), GFP_KERNEL);
+	if (!drvdata)
+		return -ENOMEM;
 
-	//ret = devm_snd_soc_register_card(&pdev->dev, &snd_davinci_audiocard);
+	drvdata->mclk = mclk;
+
+	ret = of_property_read_u32(np, "codec-clock-rate", &drvdata->sysclk);
+
+	if (ret < 0) {
+		if (!drvdata->mclk) {
+			dev_err(&pdev->dev,
+				"No clock or clock rate defined.\n");
+			return -EINVAL;
+		}
+		drvdata->sysclk = clk_get_rate(drvdata->mclk);
+	} else if (drvdata->mclk) {
+		unsigned int requestd_rate = drvdata->sysclk;
+		clk_set_rate(drvdata->mclk, drvdata->sysclk);
+		drvdata->sysclk = clk_get_rate(drvdata->mclk);
+		if (drvdata->sysclk != requestd_rate)
+			dev_warn(&pdev->dev,
+				 "Could not get requested rate %u using %u.\n",
+				 requestd_rate, drvdata->sysclk);
+	}
+
+	snd_soc_card_set_drvdata(&snd_davinci_audiocard, drvdata);
+	/*ret = devm_snd_soc_register_card(&pdev->dev, &snd_davinci_audiocard);
+
+	if (ret)
+		dev_err(&pdev->dev, "snd_soc_register_card failed (%d)\n", ret);*/
+
 	ret = snd_soc_register_card(&snd_davinci_audiocard);
 	if (ret)
 		dev_err(&pdev->dev, "snd_soc_register_card() failed: %d\n", ret);
