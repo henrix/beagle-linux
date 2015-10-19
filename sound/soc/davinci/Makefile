@@ -14,7 +14,7 @@ obj-$(CONFIG_SND_DAVINCI_SOC_VCIF) += snd-soc-davinci-vcif.o
 # DAVINCI Machine Support
 snd-soc-evm-objs := davinci-evm.o
 snd-soc-sffsdr-objs := davinci-sffsdr.o
-snd-soc-audiocard-objs := audiocard.o
+snd-snd-soc-audiocard-objs := audiocard.o
 
 obj-$(CONFIG_SND_DAVINCI_SOC_EVM) += snd-soc-evm.o
 obj-$(CONFIG_SND_AM33XX_SOC) += snd-soc-evm.o

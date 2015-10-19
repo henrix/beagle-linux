@@ -50,14 +50,14 @@
 
 			bone_audiocard_pins: pinmux_bone_audiocard_pins {
 				pinctrl-single,pins = <
-					0x1ac 0x00  /* mcasp0_ahclkx,		MODE0 | INPUT_PULLDOWN | P9_25 */
+					0x1ac 0x20  /* mcasp0_ahclkx,		MODE0 | INPUT_PULLDOWN | P9_25 */
 					0x198 0x20	/* mcasp0_axr0, 		MODE0 | INPUT_PULLDOWN | P9_30 */
 					0x19c 0x02	/* mcasp0_axr2,			MODE2 | OUTPUT_PULLDOWN | P9_28 */
 					0x078 0x20	/* mcasp0_aclkr,		MODE0 | INPUT_PULLDOWN | P9_12 */
 					0x1a4 0x20	/* mcasp0_fsr,			MODE0 | INPUT_PULLDOWN | P9_27 */
 					0x190 0x20	/* mcasp0_aclkx, 		MODE0 | INPUT_PULLDOWN | P9_31 */
 					0x194 0x20	/* mcasp0_fsx 			MODE0 | INPUT_PULLDOWN | P9_29 */
-					0x06c 0x07  /* disable internal 24.576 MHz oscillator */
+					/*0x06c 0x07  /* disable internal 24.576 MHz oscillator */
 				>;
 			};
 
@@ -75,18 +75,19 @@
 	fragment@1 {
 		target = <&spi0>;
 		__overlay__ {
-			pinctrl-names = "default";
-			pinctrl-0 = <&bb_spi0_pins>;
-			status = "okay";
-
 			/* avoid dtc warnings */
 			#address-cells = <1>;
 			#size-cells = <0>;
 
-			ad913x: ad193x@0{
-				spi-max-frequency = <10000000>;
-				reg = <0>;
+			status = "okay";
+			pinctrl-names = "default";
+			pinctrl-0 = <&bb_spi0_pins>;
+			
+			/*ad913x: ad193x@0{*/
+			ad193x@0{
 				compatible = "analog,ad1938";
+				reg = <0>;
+				spi-max-frequency = <10000000>;
 			};
 
 		};
@@ -119,10 +120,10 @@
 		__overlay__ {
 			sound {
 				compatible = "audiocard,audiocard";
-				audio-codec = <&ad913x>;
-				mcasp-controller = <&mcasp0>;
-				codec-clock-rate = <12288000>;
-				status = "okay";
+				audiocard,audio-codec = <&ad913x>;
+				audiocard,mcasp-controller = <&mcasp0>;
+				audiocard,codec-clock-rate = <12288000>;
+				audiocard,model = "AD193X TDM";
 			};
 		};
 	};
