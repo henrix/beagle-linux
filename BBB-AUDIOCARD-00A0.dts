@@ -57,7 +57,7 @@
 					0x1a4 0x20	/* mcasp0_fsr,			MODE0 | INPUT_PULLDOWN | P9_27 */
 					0x190 0x20	/* mcasp0_aclkx, 		MODE0 | INPUT_PULLDOWN | P9_31 */
 					0x194 0x20	/* mcasp0_fsx 			MODE0 | INPUT_PULLDOWN | P9_29 */
-					0x06c 0x07  /* disable internal 24.576 MHz oscillator */
+					/*0x06c 0x07  /* disable internal 24.576 MHz oscillator */
 				>;
 			};
 
@@ -95,7 +95,7 @@
 	fragment@2 {
 		target = <&mcasp0>;
 		__overlay__ {
-			compatible = "ti,da830-mcasp-audio";
+			compatible = "ti,am33xx-mcasp-audio";
 			pinctrl-names = "default";
 			pinctrl-0 = <&bone_audiocard_pins>;
 
