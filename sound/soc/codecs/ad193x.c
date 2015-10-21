@@ -358,7 +358,7 @@ static int ad193x_codec_probe(struct snd_soc_codec *codec)
 	/* modified setting for ad193x */
 	dev_dbg(codec->dev, "ad193x_codec_probe() called to set up registers.\n");
 
-	/*
+	
 	// pll input: mclki/xi 
 	ret = regmap_write(ad193x->regmap, AD193X_PLL_CLK_CTRL0, 0x80);
 	ret = regmap_write(ad193x->regmap, AD193X_PLL_CLK_CTRL1, 0x00);
@@ -366,7 +366,7 @@ static int ad193x_codec_probe(struct snd_soc_codec *codec)
 	ret = regmap_write(ad193x->regmap, AD193X_DAC_CTRL0, AD193X_DAC_SERFMT_TDM);
 	// DAC bclk and lcr master, 256 bclk per frame
 	//ret = regmap_write(ad193x->regmap, AD193X_DAC_CTRL1, AD193X_DAC_LCR_MASTER | AD193X_DAC_BCLK_MASTER | 0x04);
-	ret = regmap_write(ad193x->regmap, AD193X_DAC_CTRL1, AD193X_DAC_LCR_MASTER | AD193X_DAC_BCLK_MASTER | 0x04);
+	ret = regmap_write(ad193x->regmap, AD193X_DAC_CTRL1, AD193X_DAC_LCR_MASTER | AD193X_DAC_BCLK_MASTER);
 	// de-emphasis: 48kHz, powedown dac
 	ret = regmap_write(ad193x->regmap, AD193X_DAC_CTRL2, 0x1A); 
 	// unmute dac channels
@@ -376,23 +376,24 @@ static int ad193x_codec_probe(struct snd_soc_codec *codec)
 	// sata delay=1, adc tdm mode
 	ret = regmap_write(ad193x->regmap, AD193X_ADC_CTRL1, AD193X_ADC_SERFMT_TDM | 0x03);
 	ret = regmap_write(ad193x->regmap, AD193X_ADC_CTRL2, 0x02); // 0x02 => 256 bclks per frame
-	*/
+	
 
 	/* default setting for ad193x */
-
-	/* unmute dac channels */
+	/*
+	// unmute dac channels
 	regmap_write(ad193x->regmap, AD193X_DAC_CHNL_MUTE, 0x0);
-	/* de-emphasis: 48kHz, powedown dac */
+	// de-emphasis: 48kHz, powedown dac
 	regmap_write(ad193x->regmap, AD193X_DAC_CTRL2, 0x1A);
-	/* dac in tdm mode */
+	// dac in tdm mode
 	regmap_write(ad193x->regmap, AD193X_DAC_CTRL0, 0x40);
-	/* high-pass filter enable */
+	// high-pass filter enable
 	regmap_write(ad193x->regmap, AD193X_ADC_CTRL0, 0x23);
-	/* sata delay=1, adc aux mode */
+	// sata delay=1, adc aux mode
 	regmap_write(ad193x->regmap, AD193X_ADC_CTRL1, 0x23);
-	/* pll input: mclki/xi */
-	regmap_write(ad193x->regmap, AD193X_PLL_CLK_CTRL0, 0x81); /* mclk=24.576Mhz: 0x9D; mclk=12.288Mhz: 0x99 */
+	// pll input: mclki/xi
+	regmap_write(ad193x->regmap, AD193X_PLL_CLK_CTRL0, 0x81); // mclk=24.576Mhz: 0x9D; mclk=12.288Mhz: 0x99
 	regmap_write(ad193x->regmap, AD193X_PLL_CLK_CTRL1, 0x00);
+	*/
 
 	for (i=0; i<=16; i++){
 		regmap_read(ad193x->regmap, i, &ret);
