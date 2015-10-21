@@ -98,17 +98,15 @@ static int evm_tda998x_startup(struct snd_pcm_substream *substream)
 	return evm_startup(substream);
 }
 
-#define AD193X_SAMPLE_FORMAT SNDRV_PCM_FORMAT_S32_LE
 static int evm_ad193x_startup(struct snd_pcm_substream *substream)
 {
-	struct snd_pcm_runtime *runtime = substream->runtime;
-	struct snd_mask *fmt = constrs_mask(&runtime->hw_constraints,
-					    SNDRV_PCM_HW_PARAM_FORMAT);
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_card *soc_card = rtd->card;
+	struct snd_soc_card_drvdata_davinci *drvdata =
+		snd_soc_card_get_drvdata(soc_card);
 
-	snd_mask_none(fmt);
-	snd_mask_set(fmt, AD193X_SAMPLE_FORMAT);
-
-	return evm_startup(substream);
+	/*if (drvdata->mclk)
+		return clk_prepare_enable(drvdata->mclk);*/
 }
 
 static void evm_ad193x_shutdown(struct snd_pcm_substream *substream)
@@ -118,8 +116,8 @@ static void evm_ad193x_shutdown(struct snd_pcm_substream *substream)
 	struct snd_soc_card_drvdata_davinci *drvdata =
 		snd_soc_card_get_drvdata(soc_card);
 
-	if (drvdata->mclk)
-		clk_disable_unprepare(drvdata->mclk);
+	/*if (drvdata->mclk)
+		clk_disable_unprepare(drvdata->mclk);*/
 }
 
 static int evm_ad193x_hw_params(struct snd_pcm_substream *substream,
@@ -136,8 +134,8 @@ static int evm_ad193x_hw_params(struct snd_pcm_substream *substream,
 	dev_dbg(soc_card->dev, "evm_ad193x_hw_params(): sysclk from drvdata: %d", sysclk);
 
 	// Need to tell the codec what it's system clock is (12.288 MHz crystal)
-	int codec_sysclk = 12288000;
-	int cpu_dai_sysclk = 24576000;
+	//int codec_sysclk = 12288000;
+	//int cpu_dai_sysclk = 24576000;
 
 	ret = snd_soc_dai_set_sysclk(codec_dai, 0, sysclk, SND_SOC_CLOCK_IN); // clk_id and direction is ignored in ad193x driver
 	if (ret < 0){
@@ -166,8 +164,8 @@ static int evm_ad193x_hw_params(struct snd_pcm_substream *substream,
 		return ret;
 	}*/
 
-	unsigned int sample_bits = snd_pcm_format_physical_width(params_format(params));
-	dev_dbg(codec->dev, "audiocard hwparams(): sample_bits from params: %d\n", sample_bits);
+	//unsigned int sample_bits = snd_pcm_format_physical_width(params_format(params));
+	//dev_dbg(codec->dev, "audiocard hwparams(): sample_bits from params: %d\n", sample_bits);
 
 	//Can be wrong for davinci-mcasp (not tested)
 	//return snd_soc_dai_set_bclk_ratio(cpu_dai, 32*2); //64 Bit for 2 channels with fixes width
@@ -230,6 +228,8 @@ static int evm_aic3x_init(struct snd_soc_pcm_runtime *rtd)
 	struct snd_soc_card *card = rtd->card;
 	struct device_node *np = card->dev->of_node;
 	int ret;
+
+	dev_dbg(card->dev, "evm_aic3x_init() called.");
 
 	/* Add davinci-evm specific widgets */
 	snd_soc_dapm_new_controls(&card->dapm, aic3x_dapm_widgets,
@@ -432,6 +432,19 @@ static struct snd_soc_dai_link da830_evm_dai = {
 		   SND_SOC_DAIFMT_IB_NF,
 };
 
+static struct snd_soc_dai_link ad193x_evm_dai = {
+	.name		= "AD193X",
+	.stream_name	= "AudioCard HiFi",
+	.cpu_dai_name = "davinci-mcasp.1",
+	.codec_dai_name	= "ad193x-hifi",
+	.platform_name = "davinci-mcasp.1",
+	.codec_name = "spi0.0",
+	.ops		= &evm_ad193x_ops,
+	.init           = evm_ad193x_init,
+	.dai_fmt	= SND_SOC_DAIFMT_CBM_CFM | SND_SOC_DAIFMT_I2S |
+			   SND_SOC_DAIFMT_IB_NF,
+};
+
 static struct snd_soc_dai_link da850_evm_dai = {
 	.name = "TLV320AIC3X",
 	.stream_name = "AIC3X",
@@ -515,6 +528,18 @@ static struct snd_soc_card da830_snd_soc_card = {
 	.drvdata = &da830_snd_soc_card_drvdata,
 };
 
+static struct snd_soc_card_drvdata_davinci ad193x_snd_soc_card_drvdata = {
+	.sysclk = 12288000,
+};
+
+static struct snd_soc_card ad193x_snd_soc_card = {
+	.name = "DA830/OMAP-L137 EVM",
+	.owner = THIS_MODULE,
+	.dai_link = &ad193x_evm_dai,
+	.num_links = 1,
+	.drvdata = &ad193x_snd_soc_card_drvdata,
+};
+
 static struct snd_soc_card_drvdata_davinci da850_snd_soc_card_drvdata = {
 	.sysclk = 24576000,
 };
@@ -554,13 +579,13 @@ static struct snd_soc_dai_link evm_dai_tda998x_hdmi = {
 };
 
 static struct snd_soc_dai_link evm_dai_ad193x = {
-	.name		= "AudioCard",
+	.name		= "AD193X",
 	.stream_name	= "AudioCard HiFi",
 	.codec_dai_name	= "ad193x-hifi",
 	.ops		= &evm_ad193x_ops,
 	.init           = evm_ad193x_init,
-	.dai_fmt	= (SND_SOC_DAIFMT_CBM_CFM | SND_SOC_DAIFMT_I2S |
-			   SND_SOC_DAIFMT_IB_NF),
+	.dai_fmt	= SND_SOC_DAIFMT_CBM_CFM | SND_SOC_DAIFMT_I2S |
+			   SND_SOC_DAIFMT_IB_NF,
 };
 
 static const struct of_device_id davinci_evm_dt_ids[] = {
@@ -573,7 +598,7 @@ static const struct of_device_id davinci_evm_dt_ids[] = {
 		.data = &evm_dai_tda998x_hdmi,
 	},
 	{
-		.compatible = "audiocard,audiocard",
+		.compatible = "audiocard,evm-audiocard",
 		.data = &evm_dai_ad193x,
 	},
 	{ /* sentinel */ }
@@ -682,6 +707,9 @@ static int __init evm_init(void)
 		return platform_driver_register(&davinci_evm_driver);
 #endif
 
+	evm_snd_dev_data = &ad193x_snd_soc_card;
+		index = 0; // = mcasp.0
+
 	if (machine_is_davinci_evm()) {
 		evm_snd_dev_data = &dm6446_snd_soc_card_evm;
 		index = 0;
@@ -700,8 +728,11 @@ static int __init evm_init(void)
 	} else if (machine_is_davinci_da850_evm()) {
 		evm_snd_dev_data = &da850_snd_soc_card;
 		index = 0;
-	} else
+	} else{
+		//TODO: Create check function for ad193x audioboard.
+
 		return -EINVAL;
+	}
 
 	evm_snd_device = platform_device_alloc("soc-audio", index);
 	if (!evm_snd_device)

@@ -36,6 +36,22 @@ struct snd_soc_card_drvdata_davinci {
 	unsigned sysclk;
 };
 
+static const struct snd_soc_dapm_widget ad193x_dapm_widgets[] = {
+	SND_SOC_DAPM_DAC("DAC", "Playback", SND_SOC_NOPM, 0, 0),
+	SND_SOC_DAPM_PGA("DAC Output", AD193X_DAC_CTRL0, 0, 1, NULL, 0),
+	SND_SOC_DAPM_ADC("ADC", "Capture", SND_SOC_NOPM, 0, 0),
+	SND_SOC_DAPM_SUPPLY("PLL_PWR", AD193X_PLL_CLK_CTRL0, 0, 1, NULL, 0),
+	SND_SOC_DAPM_SUPPLY("ADC_PWR", AD193X_ADC_CTRL0, 0, 1, NULL, 0),
+	SND_SOC_DAPM_SUPPLY("SYSCLK", AD193X_PLL_CLK_CTRL0, 7, 0, NULL, 0),
+	SND_SOC_DAPM_VMID("VMID"),
+	SND_SOC_DAPM_OUTPUT("DAC1OUT"),
+	SND_SOC_DAPM_OUTPUT("DAC2OUT"),
+	SND_SOC_DAPM_OUTPUT("DAC3OUT"),
+	SND_SOC_DAPM_OUTPUT("DAC4OUT"),
+	SND_SOC_DAPM_INPUT("ADC1IN"),
+	SND_SOC_DAPM_INPUT("ADC2IN"),
+};
+
 /* sound card init */
 static int snd_davinci_audiocard_init(struct snd_soc_pcm_runtime *rtd)
 {
@@ -43,6 +59,7 @@ static int snd_davinci_audiocard_init(struct snd_soc_pcm_runtime *rtd)
 	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
 	struct snd_soc_dai *codec_dai = rtd->codec_dai;
 	struct snd_soc_codec *codec = rtd->codec;
+	struct snd_soc_dapm_context *dapm = &rtd->codec->dapm;
 	struct snd_soc_card *soc_card = rtd->card;
 	struct snd_soc_card_drvdata_davinci *drvdata =
 		snd_soc_card_get_drvdata(soc_card);
@@ -55,16 +72,26 @@ static int snd_davinci_audiocard_init(struct snd_soc_pcm_runtime *rtd)
 		return ret;
 	}
 
-	/* May also set tdm slots of davinci-mcasp here. */
+	int codec_sysclk = 12288000;	
 
-	ret = snd_soc_dai_set_clkdiv(cpu_dai, 0, 1);
-	if (ret < 0)
+	ret = snd_soc_dai_set_sysclk(cpu_dai, 0, codec_sysclk, SND_SOC_CLOCK_IN);
+	if (ret < 0){
+		dev_err(cpu_dai->dev, "Unable to set CPU system clock: %d", ret);
 		return ret;
+	}
+
+	ret = snd_soc_dai_set_sysclk(codec_dai, 0, codec_sysclk, SND_SOC_CLOCK_IN); // clk_id and direction is ignored in ad193x driver
+	if (ret < 0){
+		dev_err(codec->dev, "Unable to set AD193x system clock: %d", ret);
+		return ret;
+	}
+
+	snd_soc_dapm_new_controls(dapm, ad193x_dapm_widgets,
+				  ARRAY_SIZE(ad193x_dapm_widgets));
+
+	ret = snd_soc_of_parse_audio_routing(soc_card, "audio-routing");
 
 	dev_dbg(soc_card->dev, "audiocard_init(): Sysclk from drvdata: %d", drvdata->sysclk);
-	ret = snd_soc_dai_set_sysclk(cpu_dai, 0, drvdata->sysclk, SND_SOC_CLOCK_IN);
-	if (ret < 0)
-		return ret;
 
 	return 0;
 }
@@ -130,8 +157,8 @@ static int snd_davinci_audiocard_startup(struct snd_pcm_substream *substream) {
 	struct snd_soc_card *soc_card = rtd->card;
 	struct snd_soc_card_drvdata_davinci *drvdata = snd_soc_card_get_drvdata(soc_card);
 
-	if (drvdata->mclk)
-		return clk_prepare_enable(drvdata->mclk);
+	/*if (drvdata->mclk)
+		return clk_prepare_enable(drvdata->mclk);*/
 
 	return 0;
 }
@@ -144,8 +171,8 @@ static void snd_davinci_audiocard_shutdown(struct snd_pcm_substream *substream) 
 	struct snd_soc_card_drvdata_davinci *drvdata =
 		snd_soc_card_get_drvdata(soc_card);
 
-	if (drvdata->mclk)
-		clk_disable_unprepare(drvdata->mclk);
+	/*if (drvdata->mclk)
+		clk_disable_unprepare(drvdata->mclk);*/
 }
 
 /* machine stream operations */
@@ -174,7 +201,7 @@ static struct snd_soc_dai_link snd_davinci_audiocard_dai[] = {
 
 static const struct of_device_id snd_davinci_audiocard_dt_ids[] = {
 	{
-		.compatible = "audiocard,audiocard-extra",
+		.compatible = "ad193x-extra,ad193x-extra",
 		.data = &snd_davinci_audiocard_dai,
 	},
 	{ /* sentinel */ }
@@ -254,14 +281,14 @@ static int snd_davinci_audiocard_probe(struct platform_device *pdev)
 	}
 
 	snd_soc_card_set_drvdata(&snd_davinci_audiocard, drvdata);
-	/*ret = devm_snd_soc_register_card(&pdev->dev, &snd_davinci_audiocard);
+	ret = devm_snd_soc_register_card(&pdev->dev, &snd_davinci_audiocard);
 
 	if (ret)
-		dev_err(&pdev->dev, "snd_soc_register_card failed (%d)\n", ret);*/
+		dev_err(&pdev->dev, "snd_soc_register_card failed (%d)\n", ret);
 
-	ret = snd_soc_register_card(&snd_davinci_audiocard);
+	/*ret = snd_soc_register_card(&snd_davinci_audiocard);
 	if (ret)
-		dev_err(&pdev->dev, "snd_soc_register_card() failed: %d\n", ret);
+		dev_err(&pdev->dev, "snd_soc_register_card() failed: %d\n", ret);*/
 
 	dev_dbg(&pdev->dev, "davinci_audiocard_probe finished.\n");
 
@@ -278,7 +305,7 @@ static int snd_davinci_audiocard_remove(struct platform_device *pdev)
 /* sound card platform driver */
 static struct platform_driver snd_davinci_audiocard_driver = {
 	.driver = {
-		.name   = "snd-rpi-audiocard",
+		.name   = "snd-davinci-audiocard",
 		.owner  = THIS_MODULE,
 		.of_match_table = of_match_ptr(snd_davinci_audiocard_dt_ids),
 	},

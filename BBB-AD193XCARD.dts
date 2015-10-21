@@ -16,7 +16,7 @@
 	compatible = "ti,beaglebone", "ti,beaglebone-black", "ti,beaglebone-green";
 
 	/* identification */
-	part-number = "BBB-AUDIOCARD";
+	part-number = "BBB-AD193XCARD";
 	version = "00A0", "A0";
 
 	/* state the resources this cape uses */
@@ -83,7 +83,7 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 
-			ad913x: ad193x@0{
+			ad193x: ad193x@0{
 				spi-max-frequency = <10000000>;
 				reg = <0>;
 				compatible = "analog,ad1938";
@@ -95,7 +95,7 @@
 	fragment@2 {
 		target = <&mcasp0>;
 		__overlay__ {
-			/*compatible = "ti,am33xx-mcasp-audio";*/
+			/*compatible = "ti,da830-mcasp-audio";*/
 			pinctrl-names = "default";
 			pinctrl-0 = <&bone_audiocard_pins>;
 
@@ -119,12 +119,11 @@
 		target = <&ocp>;
 		__overlay__ {
 			sound {
-				compatible = "audiocard,evm-audiocard";
-				ti,model = "AUDIOCARD";
- 				ti,audio-codec = <&ad913x>;
-				ti,mcasp-controller = <&mcasp0>;
-				ti,codec-clock-rate = <12288000>;
-				ti,audio-routing =
+				compatible = "ad193x-extra,ad193x-extra";
+				audio-codec = <&ad193x>;
+				mcasp-controller = <&mcasp0>;
+				codec-clock-rate = <12288000>;
+				audio-routing =
 					/* EVM <-> AD193X audio routing */
 					/* <sink>, <source> */
 					"DAC1OUT",             "LLOUT",
@@ -133,6 +132,7 @@
 					"LINE2L",               "ADC2IN",
 					"LINE1R",               "ADC1IN",
 					"LINE2R",               "ADC2IN";
+				status = "okay";
 			};
 		};
 	};
