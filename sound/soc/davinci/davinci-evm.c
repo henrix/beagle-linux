@@ -133,7 +133,7 @@ static int evm_ad193x_hw_params(struct snd_pcm_substream *substream,
 	struct snd_soc_card *soc_card = rtd->card;
 	unsigned sysclk = ((struct snd_soc_card_drvdata_davinci *) snd_soc_card_get_drvdata(soc_card))->sysclk; // = 12,244 MHz
 
-	dev_dbg(soc_card->dev, "evm_ad193x_hw_params(): sysclk from drvdata: %d", drvdata->sysclk);
+	dev_dbg(soc_card->dev, "evm_ad193x_hw_params(): sysclk from drvdata: %d", sysclk);
 
 	// Need to tell the codec what it's system clock is (12.288 MHz crystal)
 	int codec_sysclk = 12288000;
