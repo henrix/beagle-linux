@@ -119,11 +119,28 @@
 		target = <&ocp>;
 		__overlay__ {
 			sound {
-				compatible = "audiocard,audiocard";
+				/*compatible = "audiocard,audiocard";
 				audio-codec = <&ad913x>;
 				mcasp-controller = <&mcasp0>;
 				codec-clock-rate = <12288000>;
-				status = "okay";
+				status = "okay";*/
+				compatible = "audiocard,audiocard";
+				ti,model = "AUDIOCARD";
+ 				ti,audio-codec = <&ad913x>;
+				ti,mcasp-controller = <&mcasp0>;
+				ti,codec-clock-rate = <12288000>
+				ti,audio-routing =
+					"Headphone Jack",       "HPLOUT", // EVM <-> AD193X
+					"Headphone Jack",       "HPROUT",
+					"Line Out",             "LLOUT",
+					"Line Out",             "RLOUT",
+					"MIC3L",                "Mic Bias 2V",
+					"MIC3R",                "Mic Bias 2V",
+					"Mic Bias 2V",          "Mic Jack",
+					"LINE1L",               "Line In",
+					"LINE2L",               "Line In",
+					"LINE1R",               "Line In",
+					"LINE2R",               "Line In";
 			};
 		};
 	};

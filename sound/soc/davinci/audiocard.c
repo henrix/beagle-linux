@@ -174,7 +174,7 @@ static struct snd_soc_dai_link snd_davinci_audiocard_dai[] = {
 
 static const struct of_device_id snd_davinci_audiocard_dt_ids[] = {
 	{
-		.compatible = "audiocard,audiocard",
+		.compatible = "audiocard,audiocard-extra",
 		.data = &snd_davinci_audiocard_dai,
 	},
 	{ /* sentinel */ }
