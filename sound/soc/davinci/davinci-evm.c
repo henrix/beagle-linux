@@ -598,7 +598,7 @@ static const struct of_device_id davinci_evm_dt_ids[] = {
 		.data = &evm_dai_tda998x_hdmi,
 	},
 	{
-		.compatible = "audiocard,evm-audiocard",
+		.compatible = "ti,evm-audiocard",
 		.data = &evm_dai_ad193x,
 	},
 	{ /* sentinel */ }
@@ -698,14 +698,20 @@ static int __init evm_init(void)
 	int index;
 	int ret;
 
+	dev_dbg(NULL, "evm init() called:\n");
+
 	/*
 	 * If dtb is there, the devices will be created dynamically.
 	 * Only register platfrom driver structure.
 	 */
 #if defined(CONFIG_OF)
-	if (of_have_populated_dt())
+	if (of_have_populated_dt()){
+		dev_dbg(NULL, "CONFIG OF is defined and of have populated dt.\n");
 		return platform_driver_register(&davinci_evm_driver);
+	}
 #endif
+
+	dev_dbg(NULL, "CONFIG OF not defined\n");
 
 	evm_snd_dev_data = &ad193x_snd_soc_card;
 		index = 0; // = mcasp.0
