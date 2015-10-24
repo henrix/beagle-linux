@@ -1,10 +1,9 @@
 /*
- * ASoC Driver for Davinci AudioCard platform
+ * ASoC Driver for Davinci platform (BBB)
  *
  * Author:	Henrik Langer <henni19790@googlemail.com>
  *        	based on 
  * 				ASoC driver for TI DAVINCI EVM platform by Vladimir Barinov <vbarinov@embeddedalley.com>
- *				SuperAudioBoard driver by R F William Hollender <whollender@gmail.com>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -29,8 +28,6 @@
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
 #include <sound/soc.h>
-//#include <sound/jack.h>
-//#include <sound/soc-dapm.h>
 #include <asm/dma.h>
 #include <asm/mach-types.h>
 
@@ -40,22 +37,6 @@ struct snd_soc_card_drvdata_davinci {
 	struct clk *mclk;
 	unsigned sysclk;
 };
-
-/*static const struct snd_soc_dapm_widget ad193x_dapm_widgets[] = {
-	SND_SOC_DAPM_DAC("DAC", "Playback", SND_SOC_NOPM, 0, 0),
-	SND_SOC_DAPM_PGA("DAC Output", AD193X_DAC_CTRL0, 0, 1, NULL, 0),
-	SND_SOC_DAPM_ADC("ADC", "Capture", SND_SOC_NOPM, 0, 0),
-	SND_SOC_DAPM_SUPPLY("PLL_PWR", AD193X_PLL_CLK_CTRL0, 0, 1, NULL, 0),
-	SND_SOC_DAPM_SUPPLY("ADC_PWR", AD193X_ADC_CTRL0, 0, 1, NULL, 0),
-	SND_SOC_DAPM_SUPPLY("SYSCLK", AD193X_PLL_CLK_CTRL0, 7, 0, NULL, 0),
-	SND_SOC_DAPM_VMID("VMID"),
-	SND_SOC_DAPM_OUTPUT("DAC1OUT"),
-	SND_SOC_DAPM_OUTPUT("DAC2OUT"),
-	SND_SOC_DAPM_OUTPUT("DAC3OUT"),
-	SND_SOC_DAPM_OUTPUT("DAC4OUT"),
-	SND_SOC_DAPM_INPUT("ADC1IN"),
-	SND_SOC_DAPM_INPUT("ADC2IN"),
-};*/
 
 static const struct snd_soc_dapm_widget ad193x_dapm_widgets[] = {
 	SND_SOC_DAPM_LINE("Line Out", NULL),
@@ -86,7 +67,7 @@ static int snd_davinci_audiocard_init(struct snd_soc_pcm_runtime *rtd)
 				  ARRAY_SIZE(ad193x_dapm_widgets));
 
 	if (np) {
-		ret = snd_soc_of_parse_audio_routing(card, "ti,audio-routing"); //If no audio routing is defined => buffer underflow
+		ret = snd_soc_of_parse_audio_routing(card, "audio-routing"); //If no audio routing is defined => buffer underflow
 		dev_dbg(card->dev, "Use audio routing from dt overlay.\n");
 		if (ret)
 			return ret;
@@ -100,27 +81,32 @@ static int snd_davinci_audiocard_init(struct snd_soc_pcm_runtime *rtd)
 	snd_soc_dapm_enable_pin(&card->dapm, "DAC1OUT");
 	snd_soc_dapm_enable_pin(&card->dapm, "Line Out");
 
-	dev_dbg(card->dev, "audiocard_init(): Sysclk from drvdata: %d", drvdata->sysclk);
+	dev_dbg(card->dev, "audiocard sysclk: %d", drvdata->sysclk);
 
-	// set codec DAI slots, 8 channels, all channels are enabled
+	// 8 channels, 32 bit width, all channels are enabled
 	// codec driver ignores TX / RX mask and width
-	ret = snd_soc_dai_set_tdm_slot(codec_dai, 0xFF, 0xFF, 2, 32);
+	ret = snd_soc_dai_set_tdm_slot(codec_dai, 0xFF, 0xFF, 8, 32);
 	if (ret < 0){
 		dev_err(codec_dai->dev, "Unable to set AD193x TDM slots.");
 		return ret;
 	}
 
-	int codec_sysclk = 12288000;	
-
-	ret = snd_soc_dai_set_sysclk(cpu_dai, 0, codec_sysclk, SND_SOC_CLOCK_IN);
+	ret = snd_soc_dai_set_tdm_slot(cpu_dai, 0xFF, 0xFF, 8, 32);
 	if (ret < 0){
-		dev_err(cpu_dai->dev, "Unable to set CPU system clock: %d", ret);
+		dev_err(codec_dai->dev, "Unable to set McASP TDM slots.");
 		return ret;
 	}
 
-	ret = snd_soc_dai_set_sysclk(codec_dai, 0, codec_sysclk, SND_SOC_CLOCK_IN); // clk_id and direction is ignored in ad193x driver
+	//Set mclk divider
+	ret = snd_soc_dai_set_clkdiv(cpu_dai, 0, 1); 
 	if (ret < 0){
-		dev_err(codec_dai->dev, "Unable to set AD193x system clock: %d", ret);
+		dev_err(cpu_dai->dev, "Unable to set mclk divider: %d", ret);
+		return ret;
+	}
+
+	ret = snd_soc_dai_set_sysclk(cpu_dai, 0, drvdata->sysclk, SND_SOC_CLOCK_IN); 
+	if (ret < 0){
+		dev_err(cpu_dai->dev, "Unable to set cpu dai sysclk: %d", ret);
 		return ret;
 	}
 
@@ -138,48 +124,31 @@ static int snd_davinci_audiocard_hw_params(struct snd_pcm_substream *substream,
 	struct snd_soc_codec *codec = rtd->codec;
 	struct snd_soc_card *soc_card = rtd->card;
 	unsigned sysclk = ((struct snd_soc_card_drvdata_davinci *) snd_soc_card_get_drvdata(soc_card))->sysclk; // = 12,244 MHz
+	unsigned int sample_bits;
 
+	dev_dbg(cpu_dai->dev, "audiocard_hw_params(): CPU DAI sysclk = %d", sysclk);
 
-	// Need to tell the codec what it's system clock is (12.288 MHz crystal)
-	int codec_sysclk = 12288000;
-	int cpu_dai_sysclk = 24576000;
+	ret = snd_soc_dai_set_sysclk(cpu_dai, 0, sysclk, SND_SOC_CLOCK_IN); 
+	if (ret < 0){
+		dev_err(cpu_dai->dev, "Unable to set cpu dai sysclk: %d", ret);
+		return ret;
+	}
 
-	dev_dbg(cpu_dai->dev, "audiocard_hw_params(): CPU DAI sysclk = %d", sysclk);	
-
-	ret = snd_soc_dai_set_sysclk(codec_dai, 0, codec_sysclk, SND_SOC_CLOCK_IN); // clk_id and direction is ignored in ad193x driver
+	ret = snd_soc_dai_set_sysclk(codec_dai, 0, sysclk, SND_SOC_CLOCK_IN); // clk_id and direction is ignored in ad193x driver
 	if (ret < 0){
 		dev_err(codec->dev, "Unable to set AD193x system clock: %d", ret);
 		return ret;
 	}
 
-	ret = snd_soc_dai_set_sysclk(cpu_dai, 0, codec_sysclk, SND_SOC_CLOCK_IN); 
-	if (ret < 0){
-		dev_err(cpu_dai->dev, "Unable to set cpu dai sysclk: %d", ret);
-		return ret;
-	}
-
-	//Set bclk/lrclk ratio to 256 (8 channels)
-	ret = snd_soc_dai_set_clkdiv(cpu_dai, 2, 64); 
-	if (ret < 0){
-		dev_err(cpu_dai->dev, "Unable to set cpu dai sysclk: %d", ret);
-		return ret;
-	}
-	
-
-	unsigned int sample_bits = snd_pcm_format_physical_width(params_format(params));
+	sample_bits = snd_pcm_format_physical_width(params_format(params));
 	dev_dbg(codec->dev, "audiocard hwparams(): sample_bits from params: %d\n", sample_bits);
 
-	//Can be wrong for davinci-mcasp (not tested)
-	//return snd_soc_dai_set_bclk_ratio(cpu_dai, 32*2); //64 Bit for 2 channels with fixes width
-
-	//May need to set sysclk of cpu dai here
 	return 0;
 }
 
 /* startup */
 static int snd_davinci_audiocard_startup(struct snd_pcm_substream *substream) {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_codec *codec = rtd->codec;
 	struct snd_soc_card *soc_card = rtd->card;
 	struct snd_soc_card_drvdata_davinci *drvdata = snd_soc_card_get_drvdata(soc_card);
 
@@ -192,7 +161,6 @@ static int snd_davinci_audiocard_startup(struct snd_pcm_substream *substream) {
 /* shutdown */
 static void snd_davinci_audiocard_shutdown(struct snd_pcm_substream *substream) {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_codec *codec = rtd->codec;
 	struct snd_soc_card *soc_card = rtd->card;
 	struct snd_soc_card_drvdata_davinci *drvdata =
 		snd_soc_card_get_drvdata(soc_card);
@@ -209,15 +177,12 @@ static struct snd_soc_ops snd_davinci_audiocard_ops = {
 };
 
 /* interface setup */
-#define AUDIOCARD_AD193X_DAIFMT ( SND_SOC_DAIFMT_DSP_A | SND_SOC_DAIFMT_IB_NF | SND_SOC_DAIFMT_CBM_CFM )
-
+#define AUDIOCARD_AD193X_DAIFMT ( SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_IB_NF | SND_SOC_DAIFMT_CBS_CFS )
+/* Structs are just placeholders. Device tree will add nodes here. */
 static struct snd_soc_dai_link snd_davinci_audiocard_dai = {
 	.name = "AudioCard",
 	.stream_name = "AudioCard HiFi",
-	//.cpu_dai_name = "davinci-mcasp.0",
 	.codec_dai_name ="ad193x-hifi",
-	//.platform_name = "davinci-mcasp.0",
-	//.codec_name = "spi0.0", //SPI0.CS0
 	.dai_fmt = AUDIOCARD_AD193X_DAIFMT,
 	.ops = &snd_davinci_audiocard_ops,
 	.init = snd_davinci_audiocard_init,
@@ -235,13 +200,10 @@ MODULE_DEVICE_TABLE(of, snd_davinci_audiocard_dt_ids);
 /* audio machine driver */
 static struct snd_soc_card snd_davinci_audiocard = {
 	.owner = THIS_MODULE,
-	.name = "snd_davinci_audiocard",
-	.dai_link = snd_davinci_audiocard_dai,
-	.num_links = ARRAY_SIZE(snd_davinci_audiocard_dai),
-	//.num_links = 1,
+	.num_links = 1,
 };
 
-/* sound card test */
+/* sound card probe */
 static int snd_davinci_audiocard_probe(struct platform_device *pdev)
 {
 	struct device_node *np = pdev->dev.of_node;
@@ -254,23 +216,18 @@ static int snd_davinci_audiocard_probe(struct platform_device *pdev)
 
 	snd_davinci_audiocard.dai_link = dai;
 
-	/* TODO: Some problems may occur here. evm doesnt't set names explicit to NULL! */
-	//dai->codec_name = NULL; 
-	dai->codec_of_node = of_parse_phandle(np, "ti,audio-codec", 0);
+	dai->codec_of_node = of_parse_phandle(np, "audio-codec", 0);
 	if (!dai->codec_of_node)
 		return -EINVAL;
 
-	//dai->cpu_dai_name = NULL;
-	dai->cpu_of_node = of_parse_phandle(np, "ti,mcasp-controller", 0);
-
-	//dai->platform_name = NULL;
+	dai->cpu_of_node = of_parse_phandle(np, "mcasp-controller", 0);
 	if (!dai->cpu_of_node)
 		return -EINVAL;
 
 	dai->platform_of_node = dai->cpu_of_node;
 
 	snd_davinci_audiocard.dev = &pdev->dev;
-	ret = snd_soc_of_parse_card_name(&snd_davinci_audiocard, "ti,model");
+	ret = snd_soc_of_parse_card_name(&snd_davinci_audiocard, "model");
 	if (ret)
 		return ret;
 
@@ -288,7 +245,7 @@ static int snd_davinci_audiocard_probe(struct platform_device *pdev)
 
 	drvdata->mclk = mclk;
 
-	ret = of_property_read_u32(np, "ti,codec-clock-rate", &drvdata->sysclk);
+	ret = of_property_read_u32(np, "codec-clock-rate", &drvdata->sysclk);
 
 	if (ret < 0) {
 		if (!drvdata->mclk) {
@@ -321,7 +278,6 @@ static int snd_davinci_audiocard_remove(struct platform_device *pdev)
 	return snd_soc_unregister_card(&snd_davinci_audiocard);
 }
 
-
 /* sound card platform driver */
 static struct platform_driver snd_davinci_audiocard_driver = {
 	.probe          = snd_davinci_audiocard_probe,
@@ -330,35 +286,10 @@ static struct platform_driver snd_davinci_audiocard_driver = {
 		.pm = &snd_soc_pm_ops,
 		.of_match_table = of_match_ptr(snd_davinci_audiocard_dt_ids),
 	},
-	
-	//.remove         = snd_davinci_audiocard_remove,
+	.remove = snd_davinci_audiocard_remove,
 };
 
-static int __init audiocard_init(void){
-
-#if defined(CONFIG_OF)
-	if (of_have_populated_dt()){
-		dev_dbg(NULL, "CONFIG_OF is defined and of have populated dt.\n");
-		return platform_driver_register(&snd_davinci_audiocard_driver);
-	}
-#endif
-
-	dev_err(NULL, "AudioCard only supports device tree.\n");
-
-	return -EINVAL;
-}
-
-static void __exit audiocard_exit(void)
-{
-	if (of_have_populated_dt()) {
-		platform_driver_unregister(&davinci_evm_driver);
-		dev_dbg(NULL, "AudioCard unregistered.\n")
-		return;
-	}
-}
-
-module_init(audiocard_init);
-module_exit(audiocard_exit);
+module_platform_driver(snd_davinci_audiocard_driver);
 
 /* Module information */
 MODULE_AUTHOR("Henrik Langer");

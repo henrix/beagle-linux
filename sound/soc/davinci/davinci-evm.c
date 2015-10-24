@@ -133,10 +133,6 @@ static int evm_ad193x_hw_params(struct snd_pcm_substream *substream,
 
 	dev_dbg(soc_card->dev, "evm_ad193x_hw_params(): sysclk from drvdata: %d", sysclk);
 
-	// Need to tell the codec what it's system clock is (12.288 MHz crystal)
-	//int codec_sysclk = 12288000;
-	//int cpu_dai_sysclk = 24576000;
-
 	ret = snd_soc_dai_set_sysclk(codec_dai, 0, sysclk, SND_SOC_CLOCK_IN); // clk_id and direction is ignored in ad193x driver
 	if (ret < 0){
 		dev_err(codec->dev, "Unable to set AD193x system clock: %d", ret);
@@ -150,27 +146,6 @@ static int evm_ad193x_hw_params(struct snd_pcm_substream *substream,
 		return ret;
 	}
 
-	//Set bclk divider
-	/*ret = snd_soc_dai_set_clkdiv(cpu_dai, 1, 256); 
-	if (ret < 0){
-		dev_err(cpu_dai->dev, "Unable to set cpu dai sysclk: %d", ret);
-		return ret;
-	}
-
-	//Set bclk/lrclk ratio to 256 (8 channels)
-	ret = snd_soc_dai_set_clkdiv(cpu_dai, 2, 64); 
-	if (ret < 0){
-		dev_err(cpu_dai->dev, "Unable to set cpu dai sysclk: %d", ret);
-		return ret;
-	}*/
-
-	//unsigned int sample_bits = snd_pcm_format_physical_width(params_format(params));
-	//dev_dbg(codec->dev, "audiocard hwparams(): sample_bits from params: %d\n", sample_bits);
-
-	//Can be wrong for davinci-mcasp (not tested)
-	//return snd_soc_dai_set_bclk_ratio(cpu_dai, 32*2); //64 Bit for 2 channels with fixes width
-
-	//May need to set sysclk of cpu dai here
 	return 0;
 }
 
@@ -333,14 +308,6 @@ static int evm_ad193x_init(struct snd_soc_pcm_runtime *rtd)
 				  ARRAY_SIZE(ad193x_dapm_widgets));
 
 	ret = snd_soc_of_parse_audio_routing(soc_card, "ti,audio-routing");
-
-	// #### TODO: Enable ad193x pins ####
-
-	/* not connected */
-	//snd_soc_dapm_disable_pin(dapm, "RX");
-
-	/* always connected */
-	//snd_soc_dapm_enable_pin(dapm, "HDMI Out");
 
 	return 0;
 }
@@ -735,8 +702,6 @@ static int __init evm_init(void)
 		evm_snd_dev_data = &da850_snd_soc_card;
 		index = 0;
 	} else{
-		//TODO: Create check function for ad193x audioboard.
-
 		return -EINVAL;
 	}
 

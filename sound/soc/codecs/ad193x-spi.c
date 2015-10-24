@@ -20,15 +20,11 @@ static int ad193x_spi_probe(struct spi_device *spi)
 {
 	struct regmap_config config;
 
-	dev_dbg(&spi->dev, "ad193x_spi_probe called.\n");
-
 	config = ad193x_regmap_config;
 	config.val_bits = 8;
 	config.reg_bits = 16;
 	config.read_flag_mask = 0x09;
 	config.write_flag_mask = 0x08;
-
-	dev_dbg(&spi->dev, "ad193x_spi_probe finished.\n");
 
 	return ad193x_probe(&spi->dev, devm_regmap_init_spi(spi, &config));
 }
