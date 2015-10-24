@@ -855,6 +855,10 @@ static int mcasp_common_hw_param(struct davinci_mcasp *mcasp, int stream,
 		numevt = 0;
 	dma_data->maxburst = numevt;
 
+	for (i=0; i <= 0xCC; i+=4){
+		dev_dbg(mcasp->dev, "McASP Register @0x%x:\t0x%x\n", i, mcasp_get_reg(mcasp, i));
+	}
+
 	return 0;
 }
 
