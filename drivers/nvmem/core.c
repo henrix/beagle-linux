@@ -68,7 +68,7 @@ static ssize_t bin_attr_nvmem_read(struct file *filp, struct kobject *kobj,
 	int rc;
 
 	/* Stop the user from reading */
-	if (pos > nvmem->size)
+	if (pos >= nvmem->size)
 		return 0;
 
 	if (pos + count > nvmem->size)
@@ -93,7 +93,11 @@ static ssize_t bin_attr_nvmem_write(struct file *filp, struct kobject *kobj,
 	int rc;
 
 	/* Stop the user from writing */
+<<<<<<< HEAD
 	if (pos > nvmem->size)
+=======
+	if (pos >= nvmem->size)
+>>>>>>> 65459cad43e55bce974861eebf934e9238424335
 		return 0;
 
 	if (pos + count > nvmem->size)
@@ -311,7 +315,11 @@ struct nvmem_device *nvmem_register(const struct nvmem_config *config)
 	nvmem->read_only = of_property_read_bool(np, "read-only") |
 			   config->read_only;
 	nvmem->bin = bin_attr_template;
+<<<<<<< HEAD
 	nvmem->bin.attr.mode = nvmem->read_only ? : (S_IRUSR | S_IWUSR);
+=======
+	nvmem->bin.attr.mode = nvmem->read_only ? S_IRUSR : (S_IRUSR | S_IWUSR);
+>>>>>>> 65459cad43e55bce974861eebf934e9238424335
 	nvmem->bin.attr.mode |= config->perm;
 	nvmem->bin.size = nvmem->size;
 	device_initialize(&nvmem->dev);
@@ -907,7 +915,11 @@ int nvmem_cell_write(struct nvmem_cell *cell, void *buf, size_t len)
 	rc = regmap_raw_write(nvmem->regmap, cell->offset, buf, cell->bytes);
 
 	/* free the tmp buffer */
+<<<<<<< HEAD
 	if (cell->bit_offset)
+=======
+	if (cell->bit_offset || cell->nbits)
+>>>>>>> 65459cad43e55bce974861eebf934e9238424335
 		kfree(buf);
 
 	if (IS_ERR_VALUE(rc))

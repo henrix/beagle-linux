@@ -103,7 +103,7 @@ static int sunxi_sid_probe(struct platform_device *pdev)
 	struct nvmem_device *nvmem;
 	struct regmap *regmap;
 	struct sunxi_sid *sid;
-	int i, size;
+	int ret, i, size;
 	char *randomness;
 
 	sid = devm_kzalloc(dev, sizeof(*sid), GFP_KERNEL);
@@ -131,6 +131,14 @@ static int sunxi_sid_probe(struct platform_device *pdev)
 		return PTR_ERR(nvmem);
 
 	randomness = kzalloc(sizeof(u8) * size, GFP_KERNEL);
+<<<<<<< HEAD
+=======
+	if (!randomness) {
+		ret = -EINVAL;
+		goto err_unreg_nvmem;
+	}
+
+>>>>>>> 65459cad43e55bce974861eebf934e9238424335
 	for (i = 0; i < size; i++)
 		randomness[i] = sunxi_sid_read_byte(sid, i);
 
@@ -140,6 +148,13 @@ static int sunxi_sid_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, nvmem);
 
 	return 0;
+<<<<<<< HEAD
+=======
+
+err_unreg_nvmem:
+	nvmem_unregister(nvmem);
+	return ret;
+>>>>>>> 65459cad43e55bce974861eebf934e9238424335
 }
 
 static int sunxi_sid_remove(struct platform_device *pdev)
