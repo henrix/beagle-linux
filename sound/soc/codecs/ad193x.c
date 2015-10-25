@@ -352,30 +352,26 @@ static struct snd_soc_dai_driver ad193x_dai = {
 static int ad193x_codec_probe(struct snd_soc_codec *codec)
 {
 	struct ad193x_priv *ad193x = snd_soc_codec_get_drvdata(codec);
-	int i, ret;
 
 	/* modified settings for ad193x */
-	// pll input: mclki/xi 
-	ret = regmap_write(ad193x->regmap, AD193X_PLL_CLK_CTRL0, 0x80);
-	ret = regmap_write(ad193x->regmap, AD193X_PLL_CLK_CTRL1, 0x00);
-	// dac in tdm mode
-	ret = regmap_write(ad193x->regmap, AD193X_DAC_CTRL0, AD193X_DAC_SERFMT_TDM); //Why not in register?!!!!
-	// DAC bclk and lcr master, 256 bclk per frame
-	ret = regmap_write(ad193x->regmap, AD193X_DAC_CTRL1, AD193X_DAC_LCR_MASTER | AD193X_DAC_BCLK_MASTER);
-	// de-emphasis: 48kHz, powedown dac
-	ret = regmap_write(ad193x->regmap, AD193X_DAC_CTRL2, 0x1A); 
+	// pll input 256: mclki/xi, xtal oscillator enabled 
+	regmap_write(ad193x->regmap, AD193X_PLL_CLK_CTRL0, 0x80);
+	// adc / dac clock source: mclk
+	regmap_write(ad193x->regmap, AD193X_PLL_CLK_CTRL1, 0x00);
+	// dac in tdm mode, sdata delay: 1, 48kHz sample rate
+	regmap_write(ad193x->regmap, AD193X_DAC_CTRL0, AD193X_DAC_SERFMT_TDM);
+	// DAC bclk and lcr slave, 256 bclk per frame
+	regmap_write(ad193x->regmap, AD193X_DAC_CTRL1, 0x04);
+	// word width: 16, de-emphasis: 48kHz, powedown dac
+	regmap_write(ad193x->regmap, AD193X_DAC_CTRL2, 0x1A); 
 	// unmute dac channels
-	ret = regmap_write(ad193x->regmap, AD193X_DAC_CHNL_MUTE, 0x0);
+	regmap_write(ad193x->regmap, AD193X_DAC_CHNL_MUTE, 0x0);
 	// high-pass filter enable
-	ret = regmap_write(ad193x->regmap, AD193X_ADC_CTRL0, 0x03);
-	// sata delay=1, adc tdm mode
-	ret = regmap_write(ad193x->regmap, AD193X_ADC_CTRL1, AD193X_ADC_SERFMT_TDM | 0x03);
-	ret = regmap_write(ad193x->regmap, AD193X_ADC_CTRL2, 0x02); // 0x02 => 256 bclks per frame
-
-	for (i=0; i<=16; i++){
-		regmap_read(ad193x->regmap, i, &ret);
-		dev_dbg(codec->dev, "ad193x prope(): AD193X register %d:\t0x%x", i, ret);
-	}
+	regmap_write(ad193x->regmap, AD193X_ADC_CTRL0, 0x02);
+	// sdata delay=1, adc tdm mode, word width: 16
+	regmap_write(ad193x->regmap, AD193X_ADC_CTRL1, AD193X_ADC_SERFMT_TDM | 0x03);
+	// 256 bclks per frame
+	regmap_write(ad193x->regmap, AD193X_ADC_CTRL2, 0x20); //0x02
 
 	return 0;
 }
@@ -416,7 +412,8 @@ int ad193x_probe(struct device *dev, struct regmap *regmap)
 
 	dev_set_drvdata(dev, ad193x);
 
-	return snd_soc_register_codec(dev, &soc_codec_dev_ad193x, &ad193x_dai, 1);
+	return snd_soc_register_codec(dev, &soc_codec_dev_ad193x,
+		&ad193x_dai, 1);
 }
 EXPORT_SYMBOL_GPL(ad193x_probe);
 

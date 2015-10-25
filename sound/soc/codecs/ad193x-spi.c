@@ -6,8 +6,6 @@
  * Licensed under the GPL-2.
  */
 
-#define DEBUG 1
-
 #include <linux/module.h>
 #include <linux/spi/spi.h>
 #include <linux/regmap.h>

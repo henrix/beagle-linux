@@ -80,6 +80,8 @@ static int snd_davinci_audiocard_init(struct snd_soc_pcm_runtime *rtd)
 
 	snd_soc_dapm_enable_pin(&card->dapm, "DAC1OUT");
 	snd_soc_dapm_enable_pin(&card->dapm, "Line Out");
+	snd_soc_dapm_enable_pin(&card->dapm, "ADC1IN");
+	snd_soc_dapm_enable_pin(&card->dapm, "Line In");
 
 	dev_dbg(card->dev, "audiocard sysclk: %d", drvdata->sysclk);
 
@@ -123,7 +125,7 @@ static int snd_davinci_audiocard_hw_params(struct snd_pcm_substream *substream,
 	struct snd_soc_dai *codec_dai = rtd->codec_dai;
 	struct snd_soc_codec *codec = rtd->codec;
 	struct snd_soc_card *soc_card = rtd->card;
-	unsigned sysclk = ((struct snd_soc_card_drvdata_davinci *) snd_soc_card_get_drvdata(soc_card))->sysclk; // = 12,244 MHz
+	unsigned sysclk = ((struct snd_soc_card_drvdata_davinci *) snd_soc_card_get_drvdata(soc_card))->sysclk; // 12,244 MHz
 	unsigned int sample_bits;
 
 	dev_dbg(cpu_dai->dev, "audiocard_hw_params(): CPU DAI sysclk = %d", sysclk);
@@ -139,9 +141,6 @@ static int snd_davinci_audiocard_hw_params(struct snd_pcm_substream *substream,
 		dev_err(codec->dev, "Unable to set AD193x system clock: %d", ret);
 		return ret;
 	}
-
-	sample_bits = snd_pcm_format_physical_width(params_format(params));
-	dev_dbg(codec->dev, "audiocard hwparams(): sample_bits from params: %d\n", sample_bits);
 
 	return 0;
 }
@@ -177,11 +176,12 @@ static struct snd_soc_ops snd_davinci_audiocard_ops = {
 };
 
 /* interface setup */
+/* rxclk and txclk are always synchron in i2s mode. */
 #define AUDIOCARD_AD193X_DAIFMT ( SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_IB_NF | SND_SOC_DAIFMT_CBS_CFS )
 /* Structs are just placeholders. Device tree will add nodes here. */
 static struct snd_soc_dai_link snd_davinci_audiocard_dai = {
 	.name = "AudioCard",
-	.stream_name = "AudioCard HiFi",
+	.stream_name = "AudioCard TDM",
 	.codec_dai_name ="ad193x-hifi",
 	.dai_fmt = AUDIOCARD_AD193X_DAIFMT,
 	.ops = &snd_davinci_audiocard_ops,

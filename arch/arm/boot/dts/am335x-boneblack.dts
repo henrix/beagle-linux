@@ -75,6 +75,7 @@
 			0x19c (PIN_OUTPUT_PULLDOWN | MUX_MODE2) /* mcasp0_ahclkr.mcasp0_axr2 */
 			0x194 (PIN_OUTPUT_PULLUP | MUX_MODE0)	/* mcasp0_fsx.mcasp0_fsx */
 			0x190 (PIN_OUTPUT_PULLDOWN | MUX_MODE0)	/* mcasp0_aclkx.mcasp0_aclkx */
+			0x198 (PIN_INPUT_PULLDOWN | MUX_MODE0)	/* mcasp0_axr0.mcasp0_axr0 */
 			0x06c (PIN_OUTPUT_PULLDOWN | MUX_MODE7)	/* gpmc_a11.GPIO1_27 */
 		>;
 	};
@@ -82,9 +83,10 @@
 	mcasp0_pins_sleep: mcasp0_pins_sleep {
 		pinctrl-single,pins = <
 			0x1ac (PIN_INPUT_PULLDOWN | MUX_MODE7)	/* mcasp0_ahclkx.mcasp0_ahclkx */
-			0x19c (PIN_INPUT_PULLDOWN | MUX_MODE7) /* mcasp0_ahclkr.mcasp0_axr2 */
+			0x19c (PIN_INPUT_PULLDOWN | MUX_MODE7)	/* mcasp0_ahclkr.mcasp0_axr2 */
 			0x194 (PIN_INPUT_PULLDOWN | MUX_MODE7)	/* mcasp0_fsx.mcasp0_fsx */
 			0x190 (PIN_INPUT_PULLDOWN | MUX_MODE7)	/* mcasp0_aclkx.mcasp0_aclkx */
+			0x198 (PIN_INPUT_PULLDOWN | MUX_MODE7)	/* mcasp0_axr0.mcasp0_axr0 */
 			0x06c (PIN_INPUT_PULLDOWN | MUX_MODE7)	/* gpmc_a11.GPIO1_27 */
 		>;
 	};
@@ -102,7 +104,7 @@
 	op-mode = <0>;	/* MCASP_IIS_MODE */
 	tdm-slots = <2>;
 	serial-dir = <	/* 0: INACTIVE, 1: TX, 2: RX */
-			0 0 1 0
+			2 0 1 0
 		>;
 	tx-num-evt = <1>;
 	rx-num-evt = <1>;

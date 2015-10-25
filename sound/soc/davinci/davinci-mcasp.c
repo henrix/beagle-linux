@@ -794,6 +794,8 @@ static int mcasp_common_hw_param(struct davinci_mcasp *mcasp, int stream,
 		}
 	}
 
+
+
 	if (stream == SNDRV_PCM_STREAM_PLAYBACK) {
 		active_serializers = tx_ser;
 		numevt = mcasp->txnumevt;
@@ -803,6 +805,9 @@ static int mcasp_common_hw_param(struct davinci_mcasp *mcasp, int stream,
 		numevt = mcasp->rxnumevt;
 		reg = mcasp->fifo_base + MCASP_RFIFOCTL_OFFSET;
 	}
+
+	dev_dbg(mcasp->dev, "\nMax active ser: %d\nActive ser: %d\nSlots: %d\nChannels: %d\nNum ser: %d\n", 
+		max_active_serializers, active_serializers, slots, channels, mcasp->num_serializer);
 
 	if (active_serializers < max_active_serializers) {
 		dev_warn(mcasp->dev, "stream has more channels (%d) than are "
@@ -856,7 +861,7 @@ static int mcasp_common_hw_param(struct davinci_mcasp *mcasp, int stream,
 	dma_data->maxburst = numevt;
 
 	for (i=0; i <= 0xCC; i+=4){
-		dev_dbg(mcasp->dev, "McASP Register @0x%x:\t0x%x\n", i, mcasp_get_reg(mcasp, i));
+		dev_dbg(mcasp->dev, "McASP Register 0x%x:\t0x%x\n", i, mcasp_get_reg(mcasp, i));
 	}
 
 	return 0;
