@@ -112,6 +112,7 @@
 				model = "AD193X Card";
 				audio-codec = <&ad193x>;
 				mcasp-controller = <&mcasp0>;
+				audiocard-tdm-slots = <8>;
 				codec-clock-rate = <12288000>;
 				audio-routing =
 					"Line Out",             "DAC1OUT",

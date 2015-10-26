@@ -61,21 +61,32 @@ static int snd_davinci_audiocard_init(struct snd_soc_pcm_runtime *rtd)
 	struct snd_soc_dai *codec_dai = rtd->codec_dai;
 	struct snd_soc_card_drvdata_davinci *drvdata = snd_soc_card_get_drvdata(card);
 	int ret;
+	unsigned int tdm_mask = 0x00;
+	u32 tdm_slots;
 
 	/* Add davinci-evm specific widgets */
 	snd_soc_dapm_new_controls(&card->dapm, ad193x_dapm_widgets,
 				  ARRAY_SIZE(ad193x_dapm_widgets));
 
 	if (np) {
-		ret = snd_soc_of_parse_audio_routing(card, "audio-routing"); //If no audio routing is defined => buffer underflow
-		dev_dbg(card->dev, "Use audio routing from dt overlay.\n");
+		dev_dbg(card->dev, "Using configuration from dt overlay.\n");
+		ret = snd_soc_of_parse_audio_routing(card, "audio-routing");
 		if (ret)
 			return ret;
+		ret = of_property_read_u32(np, "audiocard-tdm-slots", &tdm_slots);
+		if (tdm_slots > 8 || tdm_slots < 2 || ret){
+			dev_dbg(card->dev, "Couldn't get device tree property for tdm slots. Using default (=2).\n");
+			tdm_slots = 2;
+			tdm_mask = 0x03; // lsb for slot 0, ...
+		} else {
+			tdm_mask = 0xFF;
+			tdm_mask = tdm_mask >> (8 - tdm_slots);
+		}
 	} else {
+		dev_dbg(card->dev, "Use builtin audio routing.\n");
 		/* Set up davinci-evm specific audio path audio_map */
 		snd_soc_dapm_add_routes(&card->dapm, audio_map,
 					ARRAY_SIZE(audio_map));
-		dev_dbg(card->dev, "Use builtin audio routing.\n");
 	}
 
 	snd_soc_dapm_enable_pin(&card->dapm, "DAC1OUT");
@@ -85,15 +96,14 @@ static int snd_davinci_audiocard_init(struct snd_soc_pcm_runtime *rtd)
 
 	dev_dbg(card->dev, "audiocard sysclk: %d", drvdata->sysclk);
 
-	// 8 channels, 32 bit width, all channels are enabled
 	// codec driver ignores TX / RX mask and width
-	ret = snd_soc_dai_set_tdm_slot(codec_dai, 0xFF, 0xFF, 8, 32);
+	ret = snd_soc_dai_set_tdm_slot(codec_dai, tdm_mask, tdm_mask, tdm_slots, 32);
 	if (ret < 0){
 		dev_err(codec_dai->dev, "Unable to set AD193x TDM slots.");
 		return ret;
 	}
 
-	ret = snd_soc_dai_set_tdm_slot(cpu_dai, 0xFF, 0xFF, 8, 32);
+	ret = snd_soc_dai_set_tdm_slot(cpu_dai, tdm_mask, tdm_mask, tdm_slots, 32);
 	if (ret < 0){
 		dev_err(codec_dai->dev, "Unable to set McASP TDM slots.");
 		return ret;
