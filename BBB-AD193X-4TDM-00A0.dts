@@ -1,0 +1,125 @@
+/*
+ * Device tree overlay for AudioCard
+ *
+ * Author: Henrik Langer <henni19790@googlemail.com>
+ * 		   based on 
+ *				BeagleBone audio cape device tree overlay
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ */
+/dts-v1/;
+/plugin/;
+
+/ {
+	compatible = "ti,beaglebone", "ti,beaglebone-black", "ti,beaglebone-green";
+
+	/* identification */
+	part-number = "BBB-AD193X-4TDM";
+	version = "00A0", "A0";
+
+	/* state the resources this cape uses */
+	exclusive-use =
+		/* audio */
+		"P9.30",	/* mcasp0_axr0 */ /* AUDIO IN */
+		"P9.28",	/* mcasp0_axr2 (MODE2) */ /* AUDIO OUT */
+		"P9.31",	/* mcasp0_aclkx */
+		"P9.29",	/* mcasp0_fsx */
+		"P9.25",	/* mcasp0: mcasp0_ahclkx */
+		/* spi */
+		"P9.22",	/* spi0_sclk */
+		"P9.21",	/* spi0_d0 */
+		"P9.18",	/* spi0_d1 */
+		"P9.17",	/* spi0_cs0 */
+		/* the hardware ip uses */
+		"gpio1_27", "mcasp0", "spi0";
+
+	fragment@0 {
+		target = <&am33xx_pinmux>;
+		__overlay__ {
+			mcasp0_pins: pinmix_mcasp0_pins {
+				pinctrl-single,pins = <
+					0x1ac 0x20  			/* mcasp0_ahclkx,		MODE0 | INPUT_PULLDOWN | P9_25 */
+					0x19c 0x02				/* mcasp0_axr2,			MODE2 | OUTPUT_PULLDOWN | P9_28 */
+					0x194 0x10				/* mcasp0_fsx, 			MODE0 | OUTPUT_PULLUP | P9_29 */
+					0x190 0x00				/* mcasp0_aclkx, 		MODE0 | OUTPUT_PULLDOWN | P9_31 */
+					0x198 0x20				/* mcasp0_axr0, 		MODE0 | INPUT_PULLDOWN | P9_30 */
+				>;
+			};
+
+			audiocard_spi0_pins: pinmux_audiocard_spi0_pins { 
+				pinctrl-single,pins = <
+					0x150 0x30				/* spi0_sclk.spi0_sclk, MODE0 | INPUT_PULLUP | SPI0_SCLK P9_22 */
+                    0x154 0x30				/* spi0_d0.spi0_d0, 	MODE0 | INPUT_PULLUP | SPI0_MISO P9_21 */
+                    0x158 0x10				/* spi0_d0.spi0_d1, 	MODE0 | OUTPUT_PULLUP | SPI0_MOSI P9_18 */
+                    0x15c 0x10				/* spi0_cs0.spi0_cs0, 	MODE0 | OUTPUT_PULLUP | SPI0_CS0 P9_17 */
+				>;
+			};
+		};
+	};
+
+	fragment@1 {
+		target = <&spi0>;
+		__overlay__ {
+			pinctrl-names = "default";
+			pinctrl-0 = <&audiocard_spi0_pins>;
+			status = "okay";
+
+			/* avoid dtc warnings */
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			ad193x: ad193x@0{
+				spi-max-frequency = <10000000>;
+				reg = <0>;
+				compatible = "analog,ad1938";
+			};
+		};
+	};
+
+	fragment@2 {
+		target = <&mcasp0>;
+		__overlay__ {
+			pinctrl-names = "default";
+			pinctrl-0 = <&mcasp0_pins>;
+
+			status = "okay";
+
+			op-mode = <0>;          /* MCASP_IIS_MODE */
+			tdm-slots = <4>;
+			num-serializer = <16>;
+			serial-dir = <  /* 0: INACTIVE, 1: TX, 2: RX */
+				2 0 1 0
+				0 0 0 0
+				0 0 0 0
+				0 0 0 0
+			>;
+			tx-num-evt = <1>;
+			rx-num-evt = <1>;
+		};
+	};
+
+	fragment@3 {
+		target = <&ocp>;
+		__overlay__ {
+
+			sound {
+				compatible = "audiocard,audiocard";
+				model = "AD193X AudioCard 4TDM";
+				audio-codec = <&ad193x>;
+				mcasp-controller = <&mcasp0>;
+				audiocard-tdm-slots = <4>;
+				codec-clock-rate = <24576000>;
+				cpu-clock-rate = <24576000>;
+				audio-routing =
+					"Line Out",             "DAC1OUT",
+					"Line Out",             "DAC2OUT",
+					"Line Out",             "DAC3OUT",
+					"Line Out",             "DAC4OUT",
+					"ADC1IN",               "Line In",
+					"ADC2IN",               "Line In";
+			};
+		};
+	};
+};

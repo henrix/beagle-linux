@@ -15,7 +15,7 @@
  * General Public License for more details.
  */
 
-#define DEBUG 1
+//#define DEBUG 1
 
 #include <linux/module.h>
 #include <linux/moduleparam.h>
@@ -36,6 +36,7 @@
 struct snd_soc_card_drvdata_davinci {
 	struct clk *mclk;
 	unsigned sysclk;
+	unsigned codec_clock;
 };
 
 static const struct snd_soc_dapm_widget ad193x_dapm_widgets[] = {
@@ -59,7 +60,6 @@ static int snd_davinci_audiocard_init(struct snd_soc_pcm_runtime *rtd)
 	struct device_node *np = card->dev->of_node;
 	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
 	struct snd_soc_dai *codec_dai = rtd->codec_dai;
-	struct snd_soc_card_drvdata_davinci *drvdata = snd_soc_card_get_drvdata(card);
 	int ret;
 	unsigned int tdm_mask = 0x00;
 	u32 tdm_slots;
@@ -89,36 +89,16 @@ static int snd_davinci_audiocard_init(struct snd_soc_pcm_runtime *rtd)
 					ARRAY_SIZE(audio_map));
 	}
 
-	snd_soc_dapm_enable_pin(&card->dapm, "DAC1OUT");
-	snd_soc_dapm_enable_pin(&card->dapm, "Line Out");
-	snd_soc_dapm_enable_pin(&card->dapm, "ADC1IN");
-	snd_soc_dapm_enable_pin(&card->dapm, "Line In");
-
-	dev_dbg(card->dev, "audiocard sysclk: %d", drvdata->sysclk);
-
 	// codec driver ignores TX / RX mask and width
 	ret = snd_soc_dai_set_tdm_slot(codec_dai, tdm_mask, tdm_mask, tdm_slots, 32);
 	if (ret < 0){
-		dev_err(codec_dai->dev, "Unable to set AD193x TDM slots.");
+		dev_err(codec_dai->dev, "Unable to set AD193x TDM slots.\n");
 		return ret;
 	}
 
 	ret = snd_soc_dai_set_tdm_slot(cpu_dai, tdm_mask, tdm_mask, tdm_slots, 32);
 	if (ret < 0){
-		dev_err(codec_dai->dev, "Unable to set McASP TDM slots.");
-		return ret;
-	}
-
-	//Set mclk divider
-	ret = snd_soc_dai_set_clkdiv(cpu_dai, 0, 1); 
-	if (ret < 0){
-		dev_err(cpu_dai->dev, "Unable to set mclk divider: %d", ret);
-		return ret;
-	}
-
-	ret = snd_soc_dai_set_sysclk(cpu_dai, 0, drvdata->sysclk, SND_SOC_CLOCK_IN); 
-	if (ret < 0){
-		dev_err(cpu_dai->dev, "Unable to set cpu dai sysclk: %d", ret);
+		dev_err(codec_dai->dev, "Unable to set McASP TDM slots.\n");
 		return ret;
 	}
 
@@ -135,22 +115,22 @@ static int snd_davinci_audiocard_hw_params(struct snd_pcm_substream *substream,
 	struct snd_soc_dai *codec_dai = rtd->codec_dai;
 	struct snd_soc_codec *codec = rtd->codec;
 	struct snd_soc_card *soc_card = rtd->card;
-	unsigned sysclk = ((struct snd_soc_card_drvdata_davinci *) snd_soc_card_get_drvdata(soc_card))->sysclk; // 12,244 MHz
-	unsigned int sample_bits;
+	unsigned cpu_clock = ((struct snd_soc_card_drvdata_davinci *) snd_soc_card_get_drvdata(soc_card))->sysclk;
+	unsigned codec_clock = ((struct snd_soc_card_drvdata_davinci *) snd_soc_card_get_drvdata(soc_card))->codec_clock;
 
-	dev_dbg(cpu_dai->dev, "audiocard_hw_params(): CPU DAI sysclk = %d", sysclk);
-
-	ret = snd_soc_dai_set_sysclk(cpu_dai, 0, sysclk, SND_SOC_CLOCK_IN); 
+	ret = snd_soc_dai_set_sysclk(codec_dai, 0, codec_clock, SND_SOC_CLOCK_IN); // clk_id and direction is ignored in ad193x driver
 	if (ret < 0){
-		dev_err(cpu_dai->dev, "Unable to set cpu dai sysclk: %d", ret);
+		dev_err(codec->dev, "Unable to set AD193x system clock: %d.\n", ret);
 		return ret;
 	}
+	dev_dbg(cpu_dai->dev, "Set codec DAI clock rate to %d.\n", codec_clock);
 
-	ret = snd_soc_dai_set_sysclk(codec_dai, 0, sysclk, SND_SOC_CLOCK_IN); // clk_id and direction is ignored in ad193x driver
+	ret = snd_soc_dai_set_sysclk(cpu_dai, 0, cpu_clock, SND_SOC_CLOCK_OUT);
 	if (ret < 0){
-		dev_err(codec->dev, "Unable to set AD193x system clock: %d", ret);
+		dev_err(cpu_dai->dev, "Unable to set cpu dai sysclk: %d.\n", ret);
 		return ret;
 	}
+	dev_dbg(cpu_dai->dev, "Set CPU DAI clock rate to %d.\n", cpu_clock);
 
 	return 0;
 }
@@ -171,8 +151,7 @@ static int snd_davinci_audiocard_startup(struct snd_pcm_substream *substream) {
 static void snd_davinci_audiocard_shutdown(struct snd_pcm_substream *substream) {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_card *soc_card = rtd->card;
-	struct snd_soc_card_drvdata_davinci *drvdata =
-		snd_soc_card_get_drvdata(soc_card);
+	struct snd_soc_card_drvdata_davinci *drvdata = snd_soc_card_get_drvdata(soc_card);
 
 	if (drvdata->mclk)
 		clk_disable_unprepare(drvdata->mclk);
@@ -187,7 +166,7 @@ static struct snd_soc_ops snd_davinci_audiocard_ops = {
 
 /* interface setup */
 /* rxclk and txclk are always synchron in i2s mode. */
-#define AUDIOCARD_AD193X_DAIFMT ( SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_IB_NF | SND_SOC_DAIFMT_CBS_CFS )
+#define AUDIOCARD_AD193X_DAIFMT ( SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_IF | SND_SOC_DAIFMT_CBM_CFM )
 /* Structs are just placeholders. Device tree will add nodes here. */
 static struct snd_soc_dai_link snd_davinci_audiocard_dai = {
 	.name = "AudioCard",
@@ -255,8 +234,13 @@ static int snd_davinci_audiocard_probe(struct platform_device *pdev)
 
 	drvdata->mclk = mclk;
 
-	ret = of_property_read_u32(np, "codec-clock-rate", &drvdata->sysclk);
+	ret = of_property_read_u32(np, "codec-clock-rate", &drvdata->codec_clock);
+	if (ret < 0){
+		dev_err(&pdev->dev, "No codec clock rate defined.\n");
+		return -EINVAL;
+	}
 
+	ret = of_property_read_u32(np, "cpu-clock-rate", &drvdata->sysclk);
 	if (ret < 0) {
 		if (!drvdata->mclk) {
 			dev_err(&pdev->dev,
