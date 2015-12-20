@@ -1,0 +1,135 @@
+/*
+ * Copyright (C) 2012 Texas Instruments Incorporated - http://www.ti.com/
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ */
+/dts-v1/;
+
+#include "am33xx.dtsi"
+#include "am335x-bone-common.dtsi"
+
+/ {
+	model = "TI AM335x BeagleBone Green AudioCard 2TDM";
+	compatible = "ti,am335x-bone-green", "ti,am335x-bone-black", "ti,am335x-bone", "ti,am33xx";
+};
+
+&ldo3_reg {
+	regulator-min-microvolt = <1800000>;
+	regulator-max-microvolt = <1800000>;
+	regulator-always-on;
+};
+
+&mmc1 {
+	vmmc-supply = <&vmmcsd_fixed>;
+};
+
+&mmc2 {
+	vmmc-supply = <&vmmcsd_fixed>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&emmc_pins>;
+	bus-width = <8>;
+	status = "okay";
+};
+
+&sgx {
+	status = "okay";
+};
+
+&am33xx_pinmux {
+	mcasp0_pins: mcasp0_pins {
+		pinctrl-single,pins = <
+			0x1ac (PIN_INPUT_PULLUP | MUX_MODE0)	/* mcasp0_ahclkx.mcasp0_ahclkx */
+			0x19c (PIN_OUTPUT_PULLDOWN | MUX_MODE2) /* mcasp0_ahclkr.mcasp0_axr2 */
+			0x194 (PIN_INPUT_PULLDOWN | MUX_MODE0)	/* mcasp0_fsx.mcasp0_fsx */ //(PIN_INPUT_PULLDOWN | MUX_MODE0)
+			0x190 (PIN_INPUT_PULLDOWN | MUX_MODE0)	/* mcasp0_aclkx.mcasp0_aclkx */ //(PIN_INPUT_PULLDOWN | MUX_MODE0)
+			0x198 (PIN_INPUT_PULLDOWN | MUX_MODE0)	/* mcasp0_axr0.mcasp0_axr0 */
+			0x06c (PIN_OUTPUT_PULLDOWN | MUX_MODE7)	/* gpmc_a11.GPIO1_27 */
+		>;
+	};
+
+	mcasp0_pins_sleep: mcasp0_pins_sleep {
+		pinctrl-single,pins = <
+			0x1ac (PIN_INPUT_PULLDOWN | MUX_MODE7)	/* mcasp0_ahclkx.mcasp0_ahclkx */
+			0x19c (PIN_INPUT_PULLDOWN | MUX_MODE7)	/* mcasp0_ahclkr.mcasp0_axr2 */
+			0x194 (PIN_INPUT_PULLDOWN | MUX_MODE7)	/* mcasp0_fsx.mcasp0_fsx */
+			0x190 (PIN_INPUT_PULLDOWN | MUX_MODE7)	/* mcasp0_aclkx.mcasp0_aclkx */
+			0x198 (PIN_INPUT_PULLDOWN | MUX_MODE7)	/* mcasp0_axr0.mcasp0_axr0 */
+			0x06c (PIN_INPUT_PULLDOWN | MUX_MODE7)	/* gpmc_a11.GPIO1_27 */
+		>;
+	};
+
+	bb_spi0_pins: pinmux_bb_spi0_pins { 
+		pinctrl-single,pins = <
+			0x150 0x30				/* spi0_sclk.spi0_sclk, MODE0 | INPUT_PULLUP | SPI0_SCLK P9_22 */
+            0x154 0x30				/* spi0_d0.spi0_d0, 	MODE0 | INPUT_PULLUP | SPI0_MISO P9_21 */
+            0x158 0x10				/* spi0_d0.spi0_d1, 	MODE0 | OUTPUT_PULLUP | SPI0_MOSI P9_18 */
+            0x15c 0x10				/* spi0_cs0.spi0_cs0, 	MODE0 | OUTPUT_PULLUP | SPI0_CS0 P9_17 */
+		>;
+	};
+};
+
+&mcasp0	{
+	pinctrl-names = "default", "sleep";
+	pinctrl-0 = <&mcasp0_pins>;
+	pinctrl-1 = <&mcasp0_pins_sleep>;
+	status = "okay";
+	op-mode = <0>;	/* MCASP_IIS_MODE */
+	tdm-slots = <8>;
+	serial-dir = <	/* 0: INACTIVE, 1: TX, 2: RX */
+			2 0 1 0
+		>;
+	tx-num-evt = <1>;
+	rx-num-evt = <1>;
+};
+
+&spi0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&bb_spi0_pins>;
+	status = "okay";
+
+	/* avoid dtc warnings */
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	ad193x: ad193x@0{
+		spi-max-frequency = <10000000>;
+		reg = <0>;
+		compatible = "analog,ad1938";
+	};
+};
+
+/ {
+	clk_mcasp0_fixed: clk_mcasp0_fixed {
+	      #clock-cells = <0>;
+	      compatible = "fixed-clock";
+	      clock-frequency = <24576000>;
+	};
+
+	clk_mcasp0: clk_mcasp0 {
+	      #clock-cells = <0>;
+	      compatible = "gpio-gate-clock";
+	      clocks = <&clk_mcasp0_fixed>;
+	      enable-gpios = <&gpio1 27 0>; /* BeagleBone Black Clk enable on GPIO1_27 */
+	};
+
+	sound {
+		compatible = "audiocard,audiocard";
+		model = "AD193X Card";
+		audio-codec = <&ad193x>;
+		mcasp-controller = <&mcasp0>;
+		audiocard-tdm-slots = <8>;
+		codec-clock-rate = <24576000>;
+		cpu-clock-rate = <24576000>;
+		audio-routing =
+			"Line Out",             "DAC1OUT",
+			"Line Out",             "DAC2OUT",
+			"Line Out",             "DAC3OUT",
+			"Line Out",             "DAC4OUT",
+			"ADC1IN",               "Line In",
+			"ADC2IN",               "Line In";
+		clocks = <&clk_mcasp0>;
+		clock-names = "mclk";
+	};
+};
