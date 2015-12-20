@@ -1,9 +1,9 @@
 /*
- * Device tree overlay for AudioCard
+ * Bone Cape for AD1938 AudioCard
  *
- * Author: Henrik Langer <henni19790@googlemail.com>
+ * Author: Henrik Langer <henrik.langer@student.fh-kiel.de>
  * 		   based on 
- *				BeagleBone audio cape device tree overlay
+ *				BeagleBone Audio Cape RevB device tree overlay
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -22,11 +22,13 @@
 	/* state the resources this cape uses */
 	exclusive-use =
 		/* audio */
-		"P9.30",	/* mcasp0_axr0 		AUDIO IN */
-		"P9.28",	/* mcasp0_axr2 		AUDIO OUT */
-		"P9.31",	/* mcasp0_ahclkx	BITCLOCK */
-		"P9.29",	/* mcasp0_fsx 		FRAMECLOCK */
-		"P9.25",	/* mcasp0_ahclkx 	MASTERCLOCK */
+		"P9.30",	/* mcasp0_axr0 		audio in */
+		"P9.28",	/* mcasp0_axr2 		audio out */
+		"P9.31",	/* mcasp0_ahclkx	transmit bitclock */
+		"P9.29",	/* mcasp0_fsx 		transmit frameclock */
+		"P9.12",	/* mcasp0_aclkr		receive bitclock */
+		"P9.27",	/* mcasp0_fsr		receive frameclock */
+		"P9.25",	/* mcasp0_ahclkx 	masterclock */
 		/* spi */
 		"P9.22",	/* spi0_sclk */
 		"P9.21",	/* spi0_d0 */
@@ -42,8 +44,10 @@
 				pinctrl-single,pins = <
 					0x1ac 0x20		/* mcasp0_ahclkx,	MODE0 | INPUT_PULLDOWN | P9_25 */
 					0x19c 0x02		/* mcasp0_axr2,		MODE2 | OUTPUT_PULLDOWN | P9_28 */
-					0x194 0x10		/* mcasp0_fsx, 		MODE0 | OUTPUT_PULLUP | P9_29 */
-					0x190 0x00		/* mcasp0_aclkx, 	MODE0 | OUTPUT_PULLDOWN | P9_31 */
+					0x194 0x20		/* mcasp0_fsx, 		MODE0 | INPUT_PULLDOWN | P9_29 */
+					0x190 0x20		/* mcasp0_aclkx, 	MODE0 | INPUT_PULLDOWN | P9_31 */
+					0x1a4 0x20		/* mcasp0_fsr,		MODE0 | INPUT_PULLDOWN | P9_27 */
+					0x078 0x26		/* mcasp0_aclkr,	MODE6 | INPUT_PULLDOWN | P9_12 */
 					0x198 0x20		/* mcasp0_axr0, 	MODE0 | INPUT_PULLDOWN | P9_30 */
 				>;
 			};

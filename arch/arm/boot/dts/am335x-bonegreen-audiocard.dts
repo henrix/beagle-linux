@@ -1,5 +1,9 @@
 /*
- * Copyright (C) 2012 Texas Instruments Incorporated - http://www.ti.com/
+ * Base device tree of BeagleBone Green with AD1938 AudioCard
+ *
+ * Author:  Henrik Langer <henrik.langer@student.fh-kiel.de>
+ *			based on
+ 				BeagleBone Black and BeagleBone Green device tree
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -40,23 +44,27 @@
 &am33xx_pinmux {
 	mcasp0_pins: mcasp0_pins {
 		pinctrl-single,pins = <
-			0x1ac (PIN_INPUT_PULLDOWN | MUX_MODE0)	/* mcasp0_ahclkx.mcasp0_ahclkx */
-			0x19c (PIN_OUTPUT_PULLDOWN | MUX_MODE2) /* mcasp0_ahclkr.mcasp0_axr2 */
-			0x194 (PIN_INPUT_PULLDOWN | MUX_MODE0)	/* mcasp0_fsx.mcasp0_fsx */ 
-			0x190 (PIN_INPUT_PULLDOWN | MUX_MODE0)	/* mcasp0_aclkx.mcasp0_aclkx */
-			0x198 (PIN_INPUT_PULLDOWN | MUX_MODE0)	/* mcasp0_axr0.mcasp0_axr0 */
-			0x06c (PIN_OUTPUT_PULLDOWN | MUX_MODE7)	/* gpmc_a11.GPIO1_27 */
+			0x1ac (PIN_INPUT_PULLDOWN | MUX_MODE0)	/* mcasp0_ahclkx */
+			0x19c (PIN_OUTPUT_PULLDOWN | MUX_MODE2) /* mcasp0_axr2 */
+			0x194 (PIN_INPUT_PULLDOWN | MUX_MODE0)	/* mcasp0_fsx */ 
+			0x190 (PIN_INPUT_PULLDOWN | MUX_MODE0)	/* mcasp0_aclkx */
+			0x1a4 (PIN_INPUT_PULLDOWN | MUX_MODE0)	/* mcasp0_fsr */
+			0x078 (PIN_INPUT_PULLDOWN | MUX_MODE6)	/* mcasp0_aclkr */
+			0x198 (PIN_INPUT_PULLDOWN | MUX_MODE0)	/* mcasp0_axr0 */
+			0x06c (PIN_OUTPUT_PULLDOWN | MUX_MODE7)	/* gpio1[27] (enable oscillator) */
 		>;
 	};
 
 	mcasp0_pins_sleep: mcasp0_pins_sleep {
 		pinctrl-single,pins = <
-			0x1ac (PIN_INPUT_PULLDOWN | MUX_MODE7)	/* mcasp0_ahclkx.mcasp0_ahclkx */
-			0x19c (PIN_INPUT_PULLDOWN | MUX_MODE7)	/* mcasp0_ahclkr.mcasp0_axr2 */
-			0x194 (PIN_INPUT_PULLDOWN | MUX_MODE7)	/* mcasp0_fsx.mcasp0_fsx */
-			0x190 (PIN_INPUT_PULLDOWN | MUX_MODE7)	/* mcasp0_aclkx.mcasp0_aclkx */
-			0x198 (PIN_INPUT_PULLDOWN | MUX_MODE7)	/* mcasp0_axr0.mcasp0_axr0 */
-			0x06c (PIN_INPUT_PULLDOWN | MUX_MODE7)	/* gpmc_a11.GPIO1_27 */
+			0x1ac (PIN_INPUT_PULLDOWN | MUX_MODE7)	/* mcasp0_ahclkx */
+			0x19c (PIN_INPUT_PULLDOWN | MUX_MODE7)	/* mcasp0_axr2 */
+			0x194 (PIN_INPUT_PULLDOWN | MUX_MODE7)	/* mcasp0_fsx */
+			0x190 (PIN_INPUT_PULLDOWN | MUX_MODE7)	/* mcasp0_aclkx */
+			0x1a4 (PIN_INPUT_PULLDOWN | MUX_MODE0)	/* mcasp0_fsr */
+			0x078 (PIN_INPUT_PULLDOWN | MUX_MODE6)	/* mcasp0_aclkr */
+			0x198 (PIN_INPUT_PULLDOWN | MUX_MODE7)	/* mcasp0_axr0 */
+			0x06c (PIN_INPUT_PULLDOWN | MUX_MODE7)	/* gpio1[27] */
 		>;
 	};
 };

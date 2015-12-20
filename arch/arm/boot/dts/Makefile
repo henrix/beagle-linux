@@ -417,6 +417,10 @@ dtb-$(CONFIG_SOC_AM33XX) += \
 	am335x-boneblack.dtb \
 	am335x-bonegreen-overlay.dtb \
 	am335x-bonegreen.dtb \
+	am335x-bonegreen-audiocard.dtb \
+	am335x-bonegreen-audiocard-2TDM.dtb \
+	am335x-bonegreen-audiocard-4TDM.dtb \
+	am335x-bonegreen-audiocard-8TDM.dtb \
 	am335x-boneblack-wl1835mod.dtb \
 	am335x-boneblack-replicape.dtb \
 	am335x-boneblack-overlay.dtb \

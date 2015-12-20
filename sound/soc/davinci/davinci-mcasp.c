@@ -15,7 +15,7 @@
  * published by the Free Software Foundation.
  */
 
-#define DEBUG 1
+//#define DEBUG 1
 
 #include <linux/init.h>
 #include <linux/module.h>
@@ -908,7 +908,8 @@ static int mcasp_i2s_hw_param(struct davinci_mcasp *mcasp, int stream,
 		for (i = 0; i < active_slots; i++)
 			mask |= (1 << i);
 	}
-	mcasp_clr_bits(mcasp, DAVINCI_MCASP_ACLKXCTL_REG, TX_ASYNC);
+	//mcasp_clr_bits(mcasp, DAVINCI_MCASP_ACLKXCTL_REG, TX_ASYNC);
+	mcasp_set_bits(mcasp, DAVINCI_MCASP_ACLKXCTL_REG, TX_ASYNC);
 
 	if (!mcasp->dat_port)
 		busel = TXSEL;
