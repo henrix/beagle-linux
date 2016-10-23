@@ -16,6 +16,8 @@
  * General Public License for more details.
  */
 
+#define DEBUG 1
+
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 #include <linux/timer.h>
@@ -83,13 +85,14 @@ static int snd_davinci_audiocard_init(struct snd_soc_pcm_runtime *rtd)
 		if (ret)
 			return ret;
 		ret = of_property_read_u32(np, "audiocard-tdm-slots", &tdm_slots);
-		if (tdm_slots > 8 || tdm_slots < 2 || ret){
+		if (tdm_slots > 16 || tdm_slots < 2 || ret){
 			dev_dbg(card->dev, "Couldn't get device tree property for tdm slots. Using default (=2).\n");
 			tdm_slots = 2;
 			tdm_mask = 0x03; // lsb for slot 0, ...
 		} else {
-			tdm_mask = 0xFF;
-			tdm_mask = tdm_mask >> (8 - tdm_slots);
+			dev_dbg(card->dev, "Using %d TDM slots.\n", tdm_slots);
+			tdm_mask = 0xFFFF;
+			tdm_mask = tdm_mask >> (16 - tdm_slots);
 		}
 	} else {
 		dev_dbg(card->dev, "Use builtin audio routing.\n");
@@ -117,21 +120,89 @@ static int snd_davinci_audiocard_init(struct snd_soc_pcm_runtime *rtd)
 }
 
 /*
+	Auxiliary codec specific init
+*/
+/* codec private data */
+struct ad193x_priv {
+	struct regmap *regmap;
+	enum ad193x_type type;
+	int sysclk;
+};
+static struct snd_soc_component *g_component;
+static int snd_davinici_audiocard_aux_codec_init(struct snd_soc_component *component){
+	struct snd_soc_codec *codec_aux = snd_soc_component_to_codec(component);
+	struct regmap *codec_aux_regmap = component->regmap;
+	struct snd_soc_card *soc_card = component->card;
+	unsigned codec_clock = ((struct snd_soc_card_drvdata_davinci *)
+		snd_soc_card_get_drvdata(soc_card))->codec_clock;
+	int i=0, ret=0, val=0;
+	struct ad193x_priv *ad193x_aux = snd_soc_codec_get_drvdata(codec_aux);
+
+	g_component = component;
+	
+	//regmap_update_bits(codec_aux_regmap, AD193X_DAC_CTRL1,
+	//	AD193X_DAC_CHAN_MASK, AD193X_16_CHANNELS << AD193X_DAC_CHAN_SHFT);
+	
+	/*
+		16 channels, LRCLK / BLCRK slave
+	*/
+	snd_soc_component_write(component, AD193X_PLL_CLK_CTRL0, 0x04);
+	snd_soc_component_write(component, AD193X_PLL_CLK_CTRL1, 0x00);
+	snd_soc_component_write(component, AD193X_DAC_CTRL0, 0x40);
+	snd_soc_component_write(component, AD193X_DAC_CTRL1, 0x3e);
+	snd_soc_component_write(component, AD193X_DAC_CTRL2, 0x00);
+	snd_soc_component_write(component, AD193X_ADC_CTRL1, 0x23);
+	snd_soc_component_write(component, AD193X_ADC_CTRL2, 0x34);
+
+	for(i=0; i<=16; i++){
+		snd_soc_component_read(component , i, &ret) ;
+		dev_dbg(component->dev, "AD193X DC init register %d:\t0x%x\n", i, ret);
+	}
+
+	
+
+	/* Set TDM slots, sample rate, ...*/
+
+	return 0;
+}
+
+static inline bool ad193x_has_adc(const struct ad193x_priv *ad193x)
+{
+	switch (ad193x->type) {
+	case AD1933:
+	case AD1934:
+		return false;
+	default:
+		break;
+	}
+
+	return true;
+}
+
+/*
 	Set hw parameters
 */
 static int snd_davinci_audiocard_hw_params(struct snd_pcm_substream *substream,
 				       struct snd_pcm_hw_params *params)
 {
-	int ret = 0;
+	int word_len = 0, master_rate = 0, sample_rate = 0, ret = 0, i = 0;
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
 	struct snd_soc_dai *codec_dai = rtd->codec_dai;
 	struct snd_soc_codec *codec = rtd->codec;
 	struct snd_soc_card *soc_card = rtd->card;
+	struct snd_soc_aux_dev *codec_aux_dev = soc_card->aux_dev;
+	struct snd_soc_component *aux_component = rtd->component; //N.A.
 	unsigned cpu_clock = ((struct snd_soc_card_drvdata_davinci *)
 		snd_soc_card_get_drvdata(soc_card))->sysclk;
+	struct ad193x_priv *ad193x = snd_soc_codec_get_drvdata(codec);
 	unsigned codec_clock = ((struct snd_soc_card_drvdata_davinci *)
 		snd_soc_card_get_drvdata(soc_card))->codec_clock;
+
+	printk("aux dev name: %s\n", codec_aux_dev->name);
+	if (aux_component){
+		printk("aux component is defined\n");
+	}
 
 	/*
 		Set master clock of CPU and audio codec interface
@@ -150,6 +221,83 @@ static int snd_davinci_audiocard_hw_params(struct snd_pcm_substream *substream,
 		return ret;
 	}
 	dev_dbg(cpu_dai->dev, "Set CPU DAI clock rate to %d.\n", cpu_clock);
+	
+	//regmap_write(g_component->regmap, 0, 0x04);
+	/*snd_soc_component_write(g_component, AD193X_PLL_CLK_CTRL0, 0x04);
+	snd_soc_component_write(g_component, AD193X_PLL_CLK_CTRL1, 0x00);
+	snd_soc_component_write(g_component, AD193X_DAC_CTRL0, 0x40);
+	snd_soc_component_write(g_component, AD193X_DAC_CTRL1, 0x0e);
+	snd_soc_component_write(g_component, AD193X_DAC_CTRL2, 0x00);
+	snd_soc_component_write(g_component, AD193X_ADC_CTRL1, 0x23);
+	snd_soc_component_write(g_component, AD193X_ADC_CTRL2, 0x34);*/
+
+	/* bit size */
+	switch (params_width(params)) {
+	case 16:
+		word_len = 3;
+		break;
+	case 20:
+		word_len = 1;
+		break;
+	case 24:
+	case 32:
+		word_len = 0;
+		break;
+	}
+
+	/* sample rate */
+	switch(params_rate(params)){
+	case 48000:
+		sample_rate = 0;
+		break;
+	case 96000:
+		sample_rate = 1;
+		break;
+	case 192000:
+		sample_rate = 2;
+		break;
+	default:
+		sample_rate = 0; //48 kHz
+		break;
+	}
+
+	switch (codec_clock) {
+	case 12288000:
+		master_rate = AD193X_PLL_INPUT_256;
+		break;
+	case 18432000:
+		master_rate = AD193X_PLL_INPUT_384;
+		break;
+	case 24576000:
+		master_rate = AD193X_PLL_INPUT_512;
+		break;
+	case 36864000:
+		master_rate = AD193X_PLL_INPUT_768;
+		break;
+	}
+
+	regmap_update_bits(g_component->regmap, AD193X_DAC_CTRL0,
+				0x06, sample_rate << 1);
+
+	regmap_update_bits(g_component->regmap, AD193X_ADC_CTRL0,
+				0xC0, sample_rate << 6);
+
+	//regmap_update_bits(g_component->regmap, AD193X_PLL_CLK_CTRL0,
+	//		    AD193X_PLL_INPUT_MASK, master_rate);
+
+	regmap_update_bits(g_component->regmap, AD193X_DAC_CTRL2,
+			    AD193X_DAC_WORD_LEN_MASK,
+			    word_len << AD193X_DAC_WORD_LEN_SHFT);
+
+	if (ad193x_has_adc(ad193x))
+		regmap_update_bits(g_component->regmap, AD193X_ADC_CTRL1,
+				   AD193X_ADC_WORD_LEN_MASK, word_len);
+
+
+	for(i=0; i<=16; i++){
+		regmap_read(g_component->regmap, i, &ret);
+		dev_dbg(g_component->dev, "AD193X DC hw_params register %d:\t0x%x\n", i, ret);
+	}
 
 	return 0;
 }
@@ -219,6 +367,17 @@ static const struct of_device_id snd_davinci_audiocard_dt_ids[] = {
 MODULE_DEVICE_TABLE(of, snd_davinci_audiocard_dt_ids);
 
 /*
+	Placeholder for auxiliary audio codec (daisy chain) 
+*/
+static struct snd_soc_aux_dev snd_davinci_aux_codec = {
+	.name = "AD1938 Daisy Chained",
+};
+
+static struct snd_soc_dai_link_component snd_davinci_aux_component = {
+	.name = "AD1938 Daisy Chained Component",
+};
+
+/*
 	Audio machine driver
 */
 static struct snd_soc_card snd_davinci_audiocard = {
@@ -249,10 +408,24 @@ static int snd_davinci_audiocard_probe(struct platform_device *pdev)
 	if (!dai->codec_of_node)
 		return -EINVAL;
 
+	snd_davinci_aux_codec.codec_of_node = of_parse_phandle(np, "audio-codec-aux", 0);
+	if (snd_davinci_aux_codec.codec_of_node){
+		snd_davinci_aux_codec.init = snd_davinici_audiocard_aux_codec_init;
+		dev_dbg(&pdev->dev, "using two daisy chained audio codecs.\n");
+		snd_davinci_audiocard.aux_dev = &snd_davinci_aux_codec;
+		snd_davinci_audiocard.num_aux_devs = 1;
+		snd_davinci_aux_component.of_node = of_parse_phandle(np, "audio-codec-aux", 0);
+		//dai->codecs = &snd_davinci_aux_component;
+		dev_dbg(&pdev->dev, "dai codecs ptr: %p\n", dai->codecs);
+		dev_dbg(&pdev->dev, "dai num codecs: %d\n", dai->num_codecs);
+	}
+	else{
+		dev_dbg(&pdev->dev, "using only one audio codec (no daisy chain).\n");
+	}
+
 	dai->cpu_of_node = of_parse_phandle(np, "mcasp-controller", 0);
 	if (!dai->cpu_of_node)
 		return -EINVAL;
-
 	dai->platform_of_node = dai->cpu_of_node;
 
 	snd_davinci_audiocard.dev = &pdev->dev;
