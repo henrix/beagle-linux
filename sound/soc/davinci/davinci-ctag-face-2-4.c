@@ -146,10 +146,10 @@ static int snd_davinici_audiocard_aux_codec_init(struct snd_soc_component *compo
 	/*
 		16 channels, LRCLK / BLCRK slave
 	*/
-	snd_soc_component_write(component, AD193X_PLL_CLK_CTRL0, 0x04);
+	snd_soc_component_write(component, AD193X_PLL_CLK_CTRL0, 0xA4); //0x84
 	snd_soc_component_write(component, AD193X_PLL_CLK_CTRL1, 0x00);
 	snd_soc_component_write(component, AD193X_DAC_CTRL0, 0x40);
-	snd_soc_component_write(component, AD193X_DAC_CTRL1, 0x3e);
+	snd_soc_component_write(component, AD193X_DAC_CTRL1, 0x0e);
 	snd_soc_component_write(component, AD193X_DAC_CTRL2, 0x00);
 	snd_soc_component_write(component, AD193X_ADC_CTRL1, 0x23);
 	snd_soc_component_write(component, AD193X_ADC_CTRL2, 0x34);
@@ -199,7 +199,6 @@ static int snd_davinci_audiocard_hw_params(struct snd_pcm_substream *substream,
 	unsigned codec_clock = ((struct snd_soc_card_drvdata_davinci *)
 		snd_soc_card_get_drvdata(soc_card))->codec_clock;
 
-	printk("aux dev name: %s\n", codec_aux_dev->name);
 	if (aux_component){
 		printk("aux component is defined\n");
 	}
@@ -222,14 +221,13 @@ static int snd_davinci_audiocard_hw_params(struct snd_pcm_substream *substream,
 	}
 	dev_dbg(cpu_dai->dev, "Set CPU DAI clock rate to %d.\n", cpu_clock);
 	
-	//regmap_write(g_component->regmap, 0, 0x04);
-	/*snd_soc_component_write(g_component, AD193X_PLL_CLK_CTRL0, 0x04);
+	snd_soc_component_write(g_component, AD193X_PLL_CLK_CTRL0, 0xA4);
 	snd_soc_component_write(g_component, AD193X_PLL_CLK_CTRL1, 0x00);
 	snd_soc_component_write(g_component, AD193X_DAC_CTRL0, 0x40);
 	snd_soc_component_write(g_component, AD193X_DAC_CTRL1, 0x0e);
 	snd_soc_component_write(g_component, AD193X_DAC_CTRL2, 0x00);
 	snd_soc_component_write(g_component, AD193X_ADC_CTRL1, 0x23);
-	snd_soc_component_write(g_component, AD193X_ADC_CTRL2, 0x34);*/
+	snd_soc_component_write(g_component, AD193X_ADC_CTRL2, 0x34);
 
 	/* bit size */
 	switch (params_width(params)) {
@@ -282,8 +280,8 @@ static int snd_davinci_audiocard_hw_params(struct snd_pcm_substream *substream,
 	regmap_update_bits(g_component->regmap, AD193X_ADC_CTRL0,
 				0xC0, sample_rate << 6);
 
-	//regmap_update_bits(g_component->regmap, AD193X_PLL_CLK_CTRL0,
-	//		    AD193X_PLL_INPUT_MASK, master_rate);
+	regmap_update_bits(g_component->regmap, AD193X_PLL_CLK_CTRL0,
+			    AD193X_PLL_INPUT_MASK, master_rate);
 
 	regmap_update_bits(g_component->regmap, AD193X_DAC_CTRL2,
 			    AD193X_DAC_WORD_LEN_MASK,
@@ -410,14 +408,10 @@ static int snd_davinci_audiocard_probe(struct platform_device *pdev)
 
 	snd_davinci_aux_codec.codec_of_node = of_parse_phandle(np, "audio-codec-aux", 0);
 	if (snd_davinci_aux_codec.codec_of_node){
+		// use daisy chain configuration
 		snd_davinci_aux_codec.init = snd_davinici_audiocard_aux_codec_init;
-		dev_dbg(&pdev->dev, "using two daisy chained audio codecs.\n");
 		snd_davinci_audiocard.aux_dev = &snd_davinci_aux_codec;
 		snd_davinci_audiocard.num_aux_devs = 1;
-		snd_davinci_aux_component.of_node = of_parse_phandle(np, "audio-codec-aux", 0);
-		//dai->codecs = &snd_davinci_aux_component;
-		dev_dbg(&pdev->dev, "dai codecs ptr: %p\n", dai->codecs);
-		dev_dbg(&pdev->dev, "dai num codecs: %d\n", dai->num_codecs);
 	}
 	else{
 		dev_dbg(&pdev->dev, "using only one audio codec (no daisy chain).\n");

@@ -25,9 +25,6 @@ static int ad193x_dc_spi_probe(struct spi_device *spi)
 	config.read_flag_mask = 0x09;
 	config.write_flag_mask = 0x08;
 
-	printk("CS AD1938 DC: %d\n", spi->chip_select);
-	printk("CS GPIO AD1938 DC: %d\n", spi->cs_gpio);
-
 	return ad193x_dc_probe(&spi->dev, devm_regmap_init_spi(spi, &config),
 			    (enum ad193x_type)id->driver_data);
 }

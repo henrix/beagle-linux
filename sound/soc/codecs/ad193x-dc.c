@@ -82,35 +82,35 @@ static const struct snd_soc_dapm_widget ad193x_dapm_widgets[] = {
 	//SND_SOC_DAPM_SUPPLY("PLL_PWR", AD193X_PLL_CLK_CTRL0, 0, 1, NULL, 0),
 	//SND_SOC_DAPM_SUPPLY("SYSCLK", AD193X_PLL_CLK_CTRL0, 7, 0, NULL, 0),
 	SND_SOC_DAPM_VMID("VMID"),
-	SND_SOC_DAPM_OUTPUT("DAC1OUT"),
-	SND_SOC_DAPM_OUTPUT("DAC2OUT"),
-	SND_SOC_DAPM_OUTPUT("DAC3OUT"),
-	SND_SOC_DAPM_OUTPUT("DAC4OUT"),
+	SND_SOC_DAPM_OUTPUT("DAC5OUT"),
+	SND_SOC_DAPM_OUTPUT("DAC6OUT"),
+	SND_SOC_DAPM_OUTPUT("DAC7OUT"),
+	SND_SOC_DAPM_OUTPUT("DAC8OUT"),
 };
 
 static const struct snd_soc_dapm_widget ad193x_adc_widgets[] = {
 	SND_SOC_DAPM_ADC("ADC", "Capture", SND_SOC_NOPM, 0, 0),
 	SND_SOC_DAPM_SUPPLY("ADC_PWR", AD193X_ADC_CTRL0, 0, 1, NULL, 0),
-	SND_SOC_DAPM_INPUT("ADC1IN"),
-	SND_SOC_DAPM_INPUT("ADC2IN"),
+	SND_SOC_DAPM_INPUT("ADC3IN"),
+	SND_SOC_DAPM_INPUT("ADC4IN"),
 };
 
 static const struct snd_soc_dapm_route audio_paths[] = {
-	//{ "DAC", NULL, "SYSCLK" },
+	{ "DAC", NULL, "SYSCLK" },
 	{ "DAC Output", NULL, "DAC" },
 	{ "DAC Output", NULL, "VMID" },
-	{ "DAC1OUT", NULL, "DAC Output" },
-	{ "DAC2OUT", NULL, "DAC Output" },
-	{ "DAC3OUT", NULL, "DAC Output" },
-	{ "DAC4OUT", NULL, "DAC Output" },
-	//{ "SYSCLK", NULL, "PLL_PWR" },
+	{ "DAC5OUT", NULL, "DAC Output" },
+	{ "DAC6OUT", NULL, "DAC Output" },
+	{ "DAC7OUT", NULL, "DAC Output" },
+	{ "DAC8OUT", NULL, "DAC Output" },
+	{ "SYSCLK", NULL, "PLL_PWR" },
 };
 
 static const struct snd_soc_dapm_route ad193x_adc_audio_paths[] = {
 	{ "ADC", NULL, "SYSCLK" },
 	{ "ADC", NULL, "ADC_PWR" },
-	{ "ADC", NULL, "ADC1IN" },
-	{ "ADC", NULL, "ADC2IN" },
+	{ "ADC", NULL, "ADC3IN" },
+	{ "ADC", NULL, "ADC4IN" },
 };
 
 static inline bool ad193x_has_adc(const struct ad193x_priv *ad193x)
@@ -391,8 +391,6 @@ static int ad193x_codec_probe(struct snd_soc_codec *codec)
 	struct ad193x_priv *ad193x = snd_soc_codec_get_drvdata(codec);
 	struct snd_soc_dapm_context *dapm = snd_soc_codec_get_dapm(codec);
 	int num, ret, i;
-
-	printk("AD1938 DC probe() called\n");
 
 	/* default setting for ad193x */
 
