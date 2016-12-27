@@ -78,23 +78,23 @@ static const struct snd_kcontrol_new ad193x_adc_snd_controls[] = {
 
 static const struct snd_kcontrol_new ad193x_dc_snd_controls[] = {
 	/* DAC volume control */
-	SOC_DOUBLE_R_TLV("DAC5 Volume", AD193X_DAC_L1_VOL,
+	SOC_DOUBLE_R_TLV("DAC1 Volume", AD193X_DAC_L1_VOL,
 			AD193X_DAC_R1_VOL, 0, 0xFF, 1, adau193x_tlv),
-	SOC_DOUBLE_R_TLV("DAC6 Volume", AD193X_DAC_L2_VOL,
+	SOC_DOUBLE_R_TLV("DAC2 Volume", AD193X_DAC_L2_VOL,
 			AD193X_DAC_R2_VOL, 0, 0xFF, 1, adau193x_tlv),
-	SOC_DOUBLE_R_TLV("DAC7 Volume", AD193X_DAC_L3_VOL,
+	SOC_DOUBLE_R_TLV("DAC3 Volume", AD193X_DAC_L3_VOL,
 			AD193X_DAC_R3_VOL, 0, 0xFF, 1, adau193x_tlv),
-	SOC_DOUBLE_R_TLV("DAC8 Volume", AD193X_DAC_L4_VOL,
+	SOC_DOUBLE_R_TLV("DAC4 Volume", AD193X_DAC_L4_VOL,
 			AD193X_DAC_R4_VOL, 0, 0xFF, 1, adau193x_tlv),
 
 	/* DAC switch control */
-	SOC_DOUBLE("DAC5 Switch", AD193X_DAC_CHNL_MUTE, AD193X_DACL1_MUTE,
+	SOC_DOUBLE("DAC1 Switch", AD193X_DAC_CHNL_MUTE, AD193X_DACL1_MUTE,
 		AD193X_DACR1_MUTE, 1, 1),
-	SOC_DOUBLE("DAC6 Switch", AD193X_DAC_CHNL_MUTE, AD193X_DACL2_MUTE,
+	SOC_DOUBLE("DAC2 Switch", AD193X_DAC_CHNL_MUTE, AD193X_DACL2_MUTE,
 		AD193X_DACR2_MUTE, 1, 1),
-	SOC_DOUBLE("DAC7 Switch", AD193X_DAC_CHNL_MUTE, AD193X_DACL3_MUTE,
+	SOC_DOUBLE("DAC3 Switch", AD193X_DAC_CHNL_MUTE, AD193X_DACL3_MUTE,
 		AD193X_DACR3_MUTE, 1, 1),
-	SOC_DOUBLE("DAC8 Switch", AD193X_DAC_CHNL_MUTE, AD193X_DACL4_MUTE,
+	SOC_DOUBLE("DAC4 Switch", AD193X_DAC_CHNL_MUTE, AD193X_DACL4_MUTE,
 		AD193X_DACR4_MUTE, 1, 1),
 
 	/* DAC de-emphasis */
@@ -103,9 +103,9 @@ static const struct snd_kcontrol_new ad193x_dc_snd_controls[] = {
 
 static const struct snd_kcontrol_new ad193x_adc_dc_snd_controls[] = {
 	/* ADC switch control */
-	SOC_DOUBLE("ADC3 Switch", AD193X_ADC_CTRL0, AD193X_ADCL1_MUTE,
+	SOC_DOUBLE("ADC1 Switch", AD193X_ADC_CTRL0, AD193X_ADCL1_MUTE,
 		AD193X_ADCR1_MUTE, 1, 1),
-	SOC_DOUBLE("ADC4 Switch", AD193X_ADC_CTRL0, AD193X_ADCL2_MUTE,
+	SOC_DOUBLE("ADC2 Switch", AD193X_ADC_CTRL0, AD193X_ADCL2_MUTE,
 		AD193X_ADCR2_MUTE, 1, 1),
 
 	/* ADC high-pass filter */
@@ -262,10 +262,10 @@ static int ad193x_set_dai_fmt(struct snd_soc_dai *codec_dai,
 
 	switch (fmt & SND_SOC_DAIFMT_MASTER_MASK) {
 	case SND_SOC_DAIFMT_CBM_CFM: /* codec clk & frm master */
-		/*adc_fmt |= AD193X_ADC_LCR_MASTER;
-		adc_fmt |= AD193X_ADC_BCLK_MASTER;
+		//adc_fmt |= AD193X_ADC_LCR_MASTER;
+		//adc_fmt |= AD193X_ADC_BCLK_MASTER;
 		dac_fmt |= AD193X_DAC_LCR_MASTER;
-		dac_fmt |= AD193X_DAC_BCLK_MASTER;*/
+		dac_fmt |= AD193X_DAC_BCLK_MASTER;
 		break;
 	case SND_SOC_DAIFMT_CBS_CFM: /* codec clk slave & frm master */
 		adc_fmt |= AD193X_ADC_LCR_MASTER;
