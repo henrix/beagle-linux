@@ -54,8 +54,14 @@ static const struct snd_soc_dapm_route audio_map[] = {
 	{"Line Out", NULL, "DAC2OUT"},
 	{"Line Out", NULL, "DAC3OUT"},
 	{"Line Out", NULL, "DAC4OUT"},
+	{"Line Out", NULL, "DAC5OUT"},
+	{"Line Out", NULL, "DAC6OUT"},
+	{"Line Out", NULL, "DAC7OUT"},
+	{"Line Out", NULL, "DAC8OUT"},
 	{"ADC1IN", NULL, "Line In"},
 	{"ADC2IN", NULL, "Line In"},
+	{"ADC3IN", NULL, "Line In"},
+	{"ADC4IN", NULL, "Line In"},
 };
 
 /*
@@ -85,6 +91,7 @@ static int snd_davinci_audiocard_init(struct snd_soc_pcm_runtime *rtd)
 		ret = snd_soc_of_parse_audio_routing(card, "audio-routing");
 		if (ret)
 			return ret;
+		
 		ret = of_property_read_u32(np, "audiocard-tdm-slots", &tdm_slots);
 		if (tdm_slots > 16 || tdm_slots < 2 || ret){
 			dev_dbg(card->dev, "Couldn't get device tree property for tdm slots. Using default (=2).\n");
@@ -147,13 +154,13 @@ static int snd_davinici_audiocard_aux_codec_init(struct snd_soc_component *compo
 	/*
 		16 channels, LRCLK / BLCRK slave
 	*/
-	snd_soc_component_write(component, AD193X_PLL_CLK_CTRL0, 0x84); //0x84
+	snd_soc_component_write(component, AD193X_PLL_CLK_CTRL0, 0x84); //0xA4
 	snd_soc_component_write(component, AD193X_PLL_CLK_CTRL1, 0x00);
 	snd_soc_component_write(component, AD193X_DAC_CTRL0, 0x40);
-	snd_soc_component_write(component, AD193X_DAC_CTRL1, 0x0e);
+	snd_soc_component_write(component, AD193X_DAC_CTRL1, 0x3e);
 	snd_soc_component_write(component, AD193X_DAC_CTRL2, 0x00);
 	snd_soc_component_write(component, AD193X_ADC_CTRL1, 0x23);
-	snd_soc_component_write(component, AD193X_ADC_CTRL2, 0x34);
+	snd_soc_component_write(component, AD193X_ADC_CTRL2, 0x34); //7C
 
 	for(i=0; i<=16; i++){
 		snd_soc_component_read(component , i, &ret) ;
@@ -228,13 +235,13 @@ static int snd_davinci_audiocard_hw_params(struct snd_pcm_substream *substream,
 
 		dev_dbg(cpu_dai->dev, "Daisy chain enabled: %d", daisy_chain_enabled);
 
-		snd_soc_component_write(g_component, AD193X_PLL_CLK_CTRL0, 0x84);
+		snd_soc_component_write(g_component, AD193X_PLL_CLK_CTRL0, 0x84); //A4
 		snd_soc_component_write(g_component, AD193X_PLL_CLK_CTRL1, 0x00);
 		snd_soc_component_write(g_component, AD193X_DAC_CTRL0, 0x40);
-		snd_soc_component_write(g_component, AD193X_DAC_CTRL1, 0x0e);
+		snd_soc_component_write(g_component, AD193X_DAC_CTRL1, 0x3e);
 		snd_soc_component_write(g_component, AD193X_DAC_CTRL2, 0x00);
 		snd_soc_component_write(g_component, AD193X_ADC_CTRL1, 0x23);
-		snd_soc_component_write(g_component, AD193X_ADC_CTRL2, 0x34);
+		snd_soc_component_write(g_component, AD193X_ADC_CTRL2, 0x34); //7C
 
 		/* bit size */
 		switch (params_width(params)) {

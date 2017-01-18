@@ -264,8 +264,8 @@ static int ad193x_set_dai_fmt(struct snd_soc_dai *codec_dai,
 	case SND_SOC_DAIFMT_CBM_CFM: /* codec clk & frm master */
 		//adc_fmt |= AD193X_ADC_LCR_MASTER;
 		//adc_fmt |= AD193X_ADC_BCLK_MASTER;
-		dac_fmt |= AD193X_DAC_LCR_MASTER;
-		dac_fmt |= AD193X_DAC_BCLK_MASTER;
+		//dac_fmt |= AD193X_DAC_LCR_MASTER;
+		//dac_fmt |= AD193X_DAC_BCLK_MASTER;
 		break;
 	case SND_SOC_DAIFMT_CBS_CFM: /* codec clk slave & frm master */
 		adc_fmt |= AD193X_ADC_LCR_MASTER;
@@ -443,7 +443,7 @@ static int ad193x_codec_probe(struct snd_soc_codec *codec)
 	}
 
 	/* pll input: mclki/xi, xtal oscillator enabled */
-	regmap_write(ad193x->regmap, AD193X_PLL_CLK_CTRL0, 0x80); /* mclk=24.576Mhz: 0x9D; mclk=12.288Mhz: 0x99 */
+	regmap_write(ad193x->regmap, AD193X_PLL_CLK_CTRL0, 0xA0); /* mclk=24.576Mhz: 0x9D; mclk=12.288Mhz: 0x99 */
 	/* adc / dac clock source: mclk */
 	regmap_write(ad193x->regmap, AD193X_PLL_CLK_CTRL1, 0x00);
 
