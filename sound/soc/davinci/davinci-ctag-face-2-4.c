@@ -154,10 +154,10 @@ static int snd_davinici_audiocard_aux_codec_init(struct snd_soc_component *compo
 	/*
 		16 channels, LRCLK / BLCRK slave
 	*/
-	snd_soc_component_write(component, AD193X_PLL_CLK_CTRL0, 0x84); //0xA4
+	snd_soc_component_write(component, AD193X_PLL_CLK_CTRL0, 0xA4); //0xA4
 	snd_soc_component_write(component, AD193X_PLL_CLK_CTRL1, 0x00);
 	snd_soc_component_write(component, AD193X_DAC_CTRL0, 0x40);
-	snd_soc_component_write(component, AD193X_DAC_CTRL1, 0x3e);
+	snd_soc_component_write(component, AD193X_DAC_CTRL1, 0x0e);
 	snd_soc_component_write(component, AD193X_DAC_CTRL2, 0x00);
 	snd_soc_component_write(component, AD193X_ADC_CTRL1, 0x23);
 	snd_soc_component_write(component, AD193X_ADC_CTRL2, 0x34); //7C
@@ -235,10 +235,10 @@ static int snd_davinci_audiocard_hw_params(struct snd_pcm_substream *substream,
 
 		dev_dbg(cpu_dai->dev, "Daisy chain enabled: %d", daisy_chain_enabled);
 
-		snd_soc_component_write(g_component, AD193X_PLL_CLK_CTRL0, 0x84); //A4
+		snd_soc_component_write(g_component, AD193X_PLL_CLK_CTRL0, 0xA4); //A4
 		snd_soc_component_write(g_component, AD193X_PLL_CLK_CTRL1, 0x00);
 		snd_soc_component_write(g_component, AD193X_DAC_CTRL0, 0x40);
-		snd_soc_component_write(g_component, AD193X_DAC_CTRL1, 0x3e);
+		snd_soc_component_write(g_component, AD193X_DAC_CTRL1, 0x0e);
 		snd_soc_component_write(g_component, AD193X_DAC_CTRL2, 0x00);
 		snd_soc_component_write(g_component, AD193X_ADC_CTRL1, 0x23);
 		snd_soc_component_write(g_component, AD193X_ADC_CTRL2, 0x34); //7C
