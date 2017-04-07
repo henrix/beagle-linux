@@ -32,6 +32,8 @@
  *  snd_soc_dapm_disable_pin(codec, "MONO_LOUT"), etc.
  */
 
+#define DEBUG 1
+
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 #include <linux/init.h>
@@ -1027,6 +1029,7 @@ static int aic3x_hw_params(struct snd_pcm_substream *substream,
 	u16 d, pll_d = 1;
 	int clk;
 	int width = aic3x->slot_width;
+	int i;
 
 	if (!width)
 		width = params_width(params);
@@ -1165,6 +1168,11 @@ found:
 		      (pll_d >> 6) << PLLD_MSB_SHIFT);
 	snd_soc_write(codec, AIC3X_PLL_PROGD_REG,
 		      (pll_d & 0x3F) << PLLD_LSB_SHIFT);
+
+	for (i = 0; i <= 109; i++){ //register until 127 reserved => not used
+		u8 reg = snd_soc_read(codec, i);
+		dev_dbg(codec->dev, "tlv320aic3104 register (end of hw function): %d:\t0x%x", i, reg);
+	}
 
 	return 0;
 }
@@ -1489,7 +1497,13 @@ static void aic3x_mono_init(struct snd_soc_codec *codec)
  */
 static int aic3x_init(struct snd_soc_codec *codec)
 {
+	int i;
 	struct aic3x_priv *aic3x = snd_soc_codec_get_drvdata(codec);
+
+	for (i = 0; i <= 109; i++){ //register until 127 reserved => not used
+		u8 reg = snd_soc_read(codec, i);
+		dev_dbg(codec->dev, "tlv320aic3104 register (begin of probe): %d:\t0x%x", i, reg);
+	}
 
 	snd_soc_write(codec, AIC3X_PAGE_SELECT, PAGE0_SELECT);
 	snd_soc_write(codec, AIC3X_RESET, SOFT_RESET);
