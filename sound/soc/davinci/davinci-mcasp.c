@@ -15,6 +15,8 @@
  * published by the Free Software Foundation.
  */
 
+#define DEBUG 1
+
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/device.h>
@@ -403,6 +405,14 @@ static int davinci_mcasp_set_dai_fmt(struct snd_soc_dai *cpu_dai,
 	u32 data_delay;
 	bool fs_pol_rising;
 	bool inv_fs = false;
+	int i;
+
+	/*
+	for (i = 0; i < ARRAY_SIZE(context_regs); i++){
+		u32 reg = mcasp_get_reg(mcasp, context_regs[i]);
+		dev_dbg(mcasp->dev, "McASP register (begin of set_dai_fmt): %d:\t0x%x", i, reg);
+	}
+	*/
 
 	if (!fmt)
 		return 0;
@@ -925,7 +935,7 @@ static int mcasp_i2s_hw_param(struct davinci_mcasp *mcasp, int stream,
 		for (i = 0; i < active_slots; i++)
 			mask |= (1 << i);
 	}
-	mcasp_set_bits(mcasp, DAVINCI_MCASP_ACLKXCTL_REG, TX_ASYNC);
+	mcasp_clr_bits(mcasp, DAVINCI_MCASP_ACLKXCTL_REG, TX_ASYNC);
 
 	if (!mcasp->dat_port)
 		busel = TXSEL;
@@ -933,6 +943,7 @@ static int mcasp_i2s_hw_param(struct davinci_mcasp *mcasp, int stream,
 	if (stream == SNDRV_PCM_STREAM_PLAYBACK) {
 		mcasp_set_reg(mcasp, DAVINCI_MCASP_TXTDM_REG, mask);
 		mcasp_set_bits(mcasp, DAVINCI_MCASP_TXFMT_REG, busel | TXORD);
+		mcasp_mod_bits(mcasp, DAVINCI_MCASP_TXFMT_REG, FSXDLY(0), FSXDLY(3));
 		mcasp_mod_bits(mcasp, DAVINCI_MCASP_TXFMCTL_REG,
 			       FSXMOD(total_slots), FSXMOD(0x1FF));
 	} else if (stream == SNDRV_PCM_STREAM_CAPTURE) {
@@ -948,6 +959,11 @@ static int mcasp_i2s_hw_param(struct davinci_mcasp *mcasp, int stream,
 		if (mcasp_is_synchronous(mcasp) && !mcasp->channels)
 			mcasp_mod_bits(mcasp, DAVINCI_MCASP_TXFMCTL_REG,
 				       FSXMOD(total_slots), FSXMOD(0x1FF));
+	}
+
+	for (i = 0; i < ARRAY_SIZE(context_regs); i++){
+		u32 reg = mcasp_get_reg(mcasp, context_regs[i]);
+		dev_dbg(mcasp->dev, "McASP register (end of hw function): 0x%X:\t0x%X", context_regs[i], reg);
 	}
 
 	return 0;
