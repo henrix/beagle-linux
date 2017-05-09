@@ -933,6 +933,7 @@ static int mcasp_i2s_hw_param(struct davinci_mcasp *mcasp, int stream,
 	if (stream == SNDRV_PCM_STREAM_PLAYBACK) {
 		mcasp_set_reg(mcasp, DAVINCI_MCASP_TXTDM_REG, mask);
 		mcasp_set_bits(mcasp, DAVINCI_MCASP_TXFMT_REG, busel | TXORD);
+		mcasp_mod_bits(mcasp, DAVINCI_MCASP_TXFMT_REG, FSXDLY(0), FSXDLY(3));
 		mcasp_mod_bits(mcasp, DAVINCI_MCASP_TXFMCTL_REG,
 			       FSXMOD(total_slots), FSXMOD(0x1FF));
 	} else if (stream == SNDRV_PCM_STREAM_CAPTURE) {
