@@ -426,14 +426,6 @@ static int davinci_mcasp_set_dai_fmt(struct snd_soc_dai *cpu_dai,
 	u32 data_delay;
 	bool fs_pol_rising;
 	bool inv_fs = false;
-	int i;
-
-	/*
-	for (i = 0; i < ARRAY_SIZE(context_regs); i++){
-		u32 reg = mcasp_get_reg(mcasp, context_regs[i]);
-		dev_dbg(mcasp->dev, "McASP register (begin of set_dai_fmt): %d:\t0x%x", i, reg);
-	}
-	*/
 
 	if (!fmt)
 		return 0;
