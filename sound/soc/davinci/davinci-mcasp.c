@@ -168,6 +168,27 @@ static void mcasp_set_ctl_reg(struct davinci_mcasp *mcasp, u32 ctl_reg, u32 val)
 		printk(KERN_ERR "GBLCTL write error\n");
 }
 
+static int mcasp_read_reg_helper(struct snd_soc_component *component, unsigned int reg, unsigned int *val)
+{
+	struct snd_soc_platform *platform = snd_soc_component_to_platform(component);
+	struct davinci_mcasp *mcasp = snd_soc_platform_get_drvdata(platform);
+
+	*val = mcasp_get_reg(mcasp, reg);
+
+	return 0;
+}
+
+static int mcasp_write_reg_helper(struct snd_soc_component *component, unsigned int reg, unsigned int val)
+{
+	struct snd_soc_platform *platform = snd_soc_component_to_platform(component);
+	struct davinci_mcasp *mcasp = snd_soc_platform_get_drvdata(platform);
+
+	mcasp_set_bits(mcasp, reg, val);
+	mcasp_mod_bits(mcasp, reg, val, 0x30000); // needed to change bit 16 and 17
+
+	return 0;
+}
+
 static bool mcasp_is_synchronous(struct davinci_mcasp *mcasp)
 {
 	u32 rxfmctl = mcasp_get_reg(mcasp, DAVINCI_MCASP_RXFMCTL_REG);
@@ -943,7 +964,6 @@ static int mcasp_i2s_hw_param(struct davinci_mcasp *mcasp, int stream,
 	if (stream == SNDRV_PCM_STREAM_PLAYBACK) {
 		mcasp_set_reg(mcasp, DAVINCI_MCASP_TXTDM_REG, mask);
 		mcasp_set_bits(mcasp, DAVINCI_MCASP_TXFMT_REG, busel | TXORD);
-		mcasp_mod_bits(mcasp, DAVINCI_MCASP_TXFMT_REG, FSXDLY(0), FSXDLY(3));
 		mcasp_mod_bits(mcasp, DAVINCI_MCASP_TXFMCTL_REG,
 			       FSXMOD(total_slots), FSXMOD(0x1FF));
 	} else if (stream == SNDRV_PCM_STREAM_CAPTURE) {
@@ -1408,6 +1428,12 @@ static int davinci_mcasp_dai_probe(struct snd_soc_dai *dai)
 
 	dai->playback_dma_data = &mcasp->dma_data[SNDRV_PCM_STREAM_PLAYBACK];
 	dai->capture_dma_data = &mcasp->dma_data[SNDRV_PCM_STREAM_CAPTURE];
+
+	/*
+	 * Assign i/o helper functions to component for external register access.
+	 */
+	dai->component->read = mcasp_read_reg_helper;
+	dai->component->write = mcasp_write_reg_helper;
 
 	return 0;
 }
