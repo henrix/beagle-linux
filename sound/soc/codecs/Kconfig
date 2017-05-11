@@ -234,10 +234,19 @@ config SND_SOC_AD1836
 config SND_SOC_AD193X
 	tristate
 
+config SND_SOC_AD193X_DC
+	tristate
+
 config SND_SOC_AD193X_SPI
 	tristate "Analog Devices AD193x CODEC (SPI)"
 	depends on SPI_MASTER
 	select SND_SOC_AD193X
+	select REGMAP_SPI
+
+config SND_SOC_AD193X_DC_SPI
+	tristate "Analog Devices AD193x CODEC (SW SPI, DC)"
+	depends on SPI_MASTER
+	select SND_SOC_AD193X_DC
 	select REGMAP_SPI
 
 config SND_SOC_AD193X_I2C
