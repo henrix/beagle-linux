@@ -16,6 +16,8 @@
  * General Public License for more details.
  */
 
+#define DEBUG 1
+
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 #include <linux/timer.h>
@@ -31,11 +33,19 @@
 #include <asm/mach-types.h>
 
 #include "../codecs/ad193x.h"
+#include "davinci-mcasp.h"
 
-struct snd_soc_card_drvdata_davinci {
+struct ctag_face_drvdata {
 	struct clk *mclk;
 	unsigned sysclk;
 	unsigned codec_clock;
+	short daisy_chain_enabled;
+	unsigned ad1938_bit_delay_dac;
+	unsigned ad1938_bit_delay_adc;
+	unsigned ad1938_aux_bit_delay_dac;
+	unsigned ad1938_aux_bit_delay_adc;
+	unsigned mcasp_bit_delay_tx;
+	unsigned mcasp_bit_delay_rx;
 };
 
 /*
@@ -51,8 +61,14 @@ static const struct snd_soc_dapm_route audio_map[] = {
 	{"Line Out", NULL, "DAC2OUT"},
 	{"Line Out", NULL, "DAC3OUT"},
 	{"Line Out", NULL, "DAC4OUT"},
+	{"Line Out", NULL, "DAC5OUT"},
+	{"Line Out", NULL, "DAC6OUT"},
+	{"Line Out", NULL, "DAC7OUT"},
+	{"Line Out", NULL, "DAC8OUT"},
 	{"ADC1IN", NULL, "Line In"},
 	{"ADC2IN", NULL, "Line In"},
+	{"ADC3IN", NULL, "Line In"},
+	{"ADC4IN", NULL, "Line In"},
 };
 
 /*
@@ -78,18 +94,20 @@ static int snd_davinci_audiocard_init(struct snd_soc_pcm_runtime *rtd)
 		Get audio routing from device tree or use built-in routing
 	*/
 	if (np) {
-		dev_dbg(card->dev, "Using configuration from dt overlay.\n");
+		dev_dbg(card->dev, "Using audio routing configuration from dt overlay.\n");
 		ret = snd_soc_of_parse_audio_routing(card, "audio-routing");
 		if (ret)
 			return ret;
+		
 		ret = of_property_read_u32(np, "audiocard-tdm-slots", &tdm_slots);
-		if (tdm_slots > 8 || tdm_slots < 2 || ret){
+		if (tdm_slots > 16 || tdm_slots < 2 || ret){
 			dev_dbg(card->dev, "Couldn't get device tree property for tdm slots. Using default (=2).\n");
 			tdm_slots = 2;
 			tdm_mask = 0x03; // lsb for slot 0, ...
 		} else {
-			tdm_mask = 0xFF;
-			tdm_mask = tdm_mask >> (8 - tdm_slots);
+			dev_dbg(card->dev, "Using %d TDM slots.\n", tdm_slots);
+			tdm_mask = 0xFFFF;
+			tdm_mask = tdm_mask >> (16 - tdm_slots);
 		}
 	} else {
 		dev_dbg(card->dev, "Use builtin audio routing.\n");
@@ -117,21 +135,86 @@ static int snd_davinci_audiocard_init(struct snd_soc_pcm_runtime *rtd)
 }
 
 /*
+	Auxiliary codec specific init
+*/
+/* codec private data */
+struct ad193x_priv {
+	struct regmap *regmap;
+	enum ad193x_type type;
+	int sysclk;
+};
+static struct snd_soc_component *g_component;
+static int snd_davinici_audiocard_aux_codec_init(struct snd_soc_component *component){
+	int i=0, ret=0;
+
+	g_component = component;
+	
+	//regmap_update_bits(codec_aux_regmap, AD193X_DAC_CTRL1,
+	//	AD193X_DAC_CHAN_MASK, AD193X_16_CHANNELS << AD193X_DAC_CHAN_SHFT);
+	
+	/*
+		16 channels, LRCLK / BLCRK slave
+	*/
+	snd_soc_component_write(component, AD193X_PLL_CLK_CTRL0, 0xA4); //0xA4
+	snd_soc_component_write(component, AD193X_PLL_CLK_CTRL1, 0x00);
+	snd_soc_component_write(component, AD193X_DAC_CTRL0, 0x40);
+	snd_soc_component_write(component, AD193X_DAC_CTRL1, 0x0e);
+	snd_soc_component_write(component, AD193X_DAC_CTRL2, 0x00);
+	snd_soc_component_write(component, AD193X_ADC_CTRL1, 0x23);
+	snd_soc_component_write(component, AD193X_ADC_CTRL2, 0x34); //7C
+
+	for(i=0; i<=16; i++){
+		snd_soc_component_read(component , i, &ret) ;
+		dev_dbg(component->dev, "AD193X DC init register %d:\t0x%x\n", i, ret);
+	}
+
+	
+
+	/* Set TDM slots, sample rate, ...*/
+
+	return 0;
+}
+
+static inline bool ad193x_has_adc(const struct ad193x_priv *ad193x)
+{
+	switch (ad193x->type) {
+	case AD1933:
+	case AD1934:
+		return false;
+	default:
+		break;
+	}
+
+	return true;
+}
+
+/*
 	Set hw parameters
 */
 static int snd_davinci_audiocard_hw_params(struct snd_pcm_substream *substream,
 				       struct snd_pcm_hw_params *params)
 {
-	int ret = 0;
+	int word_len = 0, master_rate = 0, sample_rate = 0, ret = 0, i = 0;
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
 	struct snd_soc_dai *codec_dai = rtd->codec_dai;
 	struct snd_soc_codec *codec = rtd->codec;
 	struct snd_soc_card *soc_card = rtd->card;
-	unsigned cpu_clock = ((struct snd_soc_card_drvdata_davinci *)
+	struct snd_soc_component *codec_dai_component = codec_dai->component;
+	struct snd_soc_component *cpu_dai_component = cpu_dai->component;
+	struct snd_soc_component *aux_component = rtd->component; //N.A.
+	unsigned cpu_clock = ((struct ctag_face_drvdata *)
 		snd_soc_card_get_drvdata(soc_card))->sysclk;
-	unsigned codec_clock = ((struct snd_soc_card_drvdata_davinci *)
+	struct ad193x_priv *ad193x = snd_soc_codec_get_drvdata(codec);
+	unsigned codec_clock = ((struct ctag_face_drvdata *)
 		snd_soc_card_get_drvdata(soc_card))->codec_clock;
+	short daisy_chain_enabled = ((struct ctag_face_drvdata *)
+		snd_soc_card_get_drvdata(soc_card))->daisy_chain_enabled;
+	
+
+	if (aux_component){
+		printk("aux component is defined\n");
+	}
 
 	/*
 		Set master clock of CPU and audio codec interface
@@ -151,6 +234,160 @@ static int snd_davinci_audiocard_hw_params(struct snd_pcm_substream *substream,
 	}
 	dev_dbg(cpu_dai->dev, "Set CPU DAI clock rate to %d.\n", cpu_clock);
 
+	/*
+		Configure bit delay in McASP and AD1938 codec according to 
+		device tree overlay properties (required due to isolator delays).
+		In best case, this should be done once in the init function, 
+		but register access at this time leads to kernel panic.
+	 */
+	/*
+	if (cpu_dai_component->write && cpu_dai_component->read){
+		snd_soc_component_update_bits(cpu_dai_component, DAVINCI_MCASP_TXFMT_REG, 0x30000,
+			((struct ctag_face_drvdata *) snd_soc_card_get_drvdata(soc_card))->mcasp_bit_delay_tx);
+		snd_soc_component_update_bits(cpu_dai_component, DAVINCI_MCASP_RXFMT_REG, 0x30000,
+			((struct ctag_face_drvdata *) snd_soc_card_get_drvdata(soc_card))->mcasp_bit_delay_rx);
+	}
+	else{
+		dev_warn(cpu_dai->dev, "McASP driver does not offer functions for register access. Could not set bit delay settings in machine driver.\n");
+	}
+
+	switch(((struct ctag_face_drvdata *) snd_soc_card_get_drvdata(soc_card))->ad1938_bit_delay_dac){
+		case 0:
+			snd_soc_component_update_bits(codec_dai_component, AD193X_DAC_CTRL0, 0x8, 0x8);
+		break;
+		case 1:
+			snd_soc_component_update_bits(codec_dai_component, AD193X_DAC_CTRL0, 0x8, 0x0);
+		break;
+		default:
+			dev_warn(codec_dai->dev, "Got unsupported bit delay setting for AD1938 dac. Using delay of 1.\n");
+			snd_soc_component_update_bits(codec_dai_component, AD193X_DAC_CTRL0, 0x8, 0x0);
+		break;
+	}
+
+	switch(((struct ctag_face_drvdata *) snd_soc_card_get_drvdata(soc_card))->ad1938_bit_delay_adc){
+		case 0:
+			snd_soc_component_update_bits(codec_dai_component, AD193X_ADC_CTRL1, 0x4, 0x4);
+		break;
+		case 1:
+			snd_soc_component_update_bits(codec_dai_component, AD193X_ADC_CTRL1, 0x4, 0x0);
+		break;
+		default:
+			dev_warn(codec_dai->dev, "Got unsupported bit delay setting for AD1938 adc. Using delay of 1.\n");
+			snd_soc_component_update_bits(codec_dai_component, AD193X_ADC_CTRL1, 0x4, 0x0);
+		break;
+	}
+	*/
+
+	if (daisy_chain_enabled){
+
+		snd_soc_component_write(g_component, AD193X_PLL_CLK_CTRL0, 0xA4); //A4
+		snd_soc_component_write(g_component, AD193X_PLL_CLK_CTRL1, 0x00);
+		snd_soc_component_write(g_component, AD193X_DAC_CTRL0, 0x40);
+		snd_soc_component_write(g_component, AD193X_DAC_CTRL1, 0x0e);
+		snd_soc_component_write(g_component, AD193X_DAC_CTRL2, 0x00);
+		snd_soc_component_write(g_component, AD193X_ADC_CTRL1, 0x23);
+		snd_soc_component_write(g_component, AD193X_ADC_CTRL2, 0x34); //7C
+		snd_soc_component_update_bits(g_component, AD193X_DAC_CTRL0, 0x8,
+			((struct ctag_face_drvdata *) snd_soc_card_get_drvdata(soc_card))->ad1938_aux_bit_delay_dac);
+		snd_soc_component_update_bits(g_component, AD193X_ADC_CTRL1, 0x4,
+			((struct ctag_face_drvdata *) snd_soc_card_get_drvdata(soc_card))->ad1938_aux_bit_delay_adc);
+
+		/* Set bit delay for auxiliary AD1938 codec (slave codec). */
+		switch(((struct ctag_face_drvdata *) snd_soc_card_get_drvdata(soc_card))->ad1938_bit_delay_dac){
+			case 0:
+				snd_soc_component_update_bits(g_component, AD193X_DAC_CTRL0, 0x8, 0x8);
+			break;
+			case 1:
+				snd_soc_component_update_bits(g_component, AD193X_DAC_CTRL0, 0x8, 0x0);
+			break;
+			default:
+				dev_warn(codec_dai->dev, "Got unsupported bit delay setting for auxiliary AD1938 dac. Using delay of 1.\n");
+				snd_soc_component_update_bits(codec_dai_component, AD193X_DAC_CTRL0, 0x8, 0x0);
+			break;
+		}
+
+		switch(((struct ctag_face_drvdata *) snd_soc_card_get_drvdata(soc_card))->ad1938_bit_delay_adc){
+			case 0:
+				snd_soc_component_update_bits(g_component, AD193X_ADC_CTRL1, 0x4, 0x4);
+			break;
+			case 1:
+				snd_soc_component_update_bits(g_component, AD193X_ADC_CTRL1, 0x4, 0x0);
+			break;
+			default:
+				dev_warn(codec_dai->dev, "Got unsupported bit delay setting for auxiliary AD1938 adc. Using delay of 1.\n");
+				snd_soc_component_update_bits(g_component, AD193X_ADC_CTRL1, 0x4, 0x0);
+			break;
+		}
+
+		/* bit size */
+		switch (params_width(params)) {
+		case 16:
+			word_len = 3;
+			break;
+		case 20:
+			word_len = 1;
+			break;
+		case 24:
+		case 32:
+			word_len = 0;
+			break;
+		}
+
+		/* sample rate */
+		switch(params_rate(params)){
+		case 48000:
+			sample_rate = 0;
+			break;
+		case 96000:
+			sample_rate = 1;
+			break;
+		case 192000:
+			sample_rate = 2;
+			break;
+		default:
+			sample_rate = 0; //48 kHz
+			break;
+		}
+
+		switch (codec_clock) {
+		case 12288000:
+			master_rate = AD193X_PLL_INPUT_256;
+			break;
+		case 18432000:
+			master_rate = AD193X_PLL_INPUT_384;
+			break;
+		case 24576000:
+			master_rate = AD193X_PLL_INPUT_512;
+			break;
+		case 36864000:
+			master_rate = AD193X_PLL_INPUT_768;
+			break;
+		}
+
+		regmap_update_bits(g_component->regmap, AD193X_DAC_CTRL0,
+				0x06, sample_rate << 1);
+
+		regmap_update_bits(g_component->regmap, AD193X_ADC_CTRL0,
+				0xC0, sample_rate << 6);
+
+		regmap_update_bits(g_component->regmap, AD193X_PLL_CLK_CTRL0,
+			    AD193X_PLL_INPUT_MASK, master_rate);
+
+		regmap_update_bits(g_component->regmap, AD193X_DAC_CTRL2,
+			    AD193X_DAC_WORD_LEN_MASK,
+			    word_len << AD193X_DAC_WORD_LEN_SHFT);
+
+		if (ad193x_has_adc(ad193x))
+			regmap_update_bits(g_component->regmap, AD193X_ADC_CTRL1,
+				  AD193X_ADC_WORD_LEN_MASK, word_len);
+
+
+		for(i=0; i<=16; i++){
+			regmap_read(g_component->regmap, i, &ret);
+			dev_dbg(g_component->dev, "AD193X DC hw_params register %d:\t0x%x\n", i, ret);
+		}
+	}
+
 	return 0;
 }
 
@@ -160,7 +397,7 @@ static int snd_davinci_audiocard_hw_params(struct snd_pcm_substream *substream,
 static int snd_davinci_audiocard_startup(struct snd_pcm_substream *substream) {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_card *soc_card = rtd->card;
-	struct snd_soc_card_drvdata_davinci *drvdata = snd_soc_card_get_drvdata(soc_card);
+	struct ctag_face_drvdata *drvdata = snd_soc_card_get_drvdata(soc_card);
 
 	if (drvdata->mclk)
 		return clk_prepare_enable(drvdata->mclk);
@@ -174,7 +411,7 @@ static int snd_davinci_audiocard_startup(struct snd_pcm_substream *substream) {
 static void snd_davinci_audiocard_shutdown(struct snd_pcm_substream *substream) {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_card *soc_card = rtd->card;
-	struct snd_soc_card_drvdata_davinci *drvdata = snd_soc_card_get_drvdata(soc_card);
+	struct ctag_face_drvdata *drvdata = snd_soc_card_get_drvdata(soc_card);
 
 	if (drvdata->mclk)
 		clk_disable_unprepare(drvdata->mclk);
@@ -219,6 +456,13 @@ static const struct of_device_id snd_davinci_audiocard_dt_ids[] = {
 MODULE_DEVICE_TABLE(of, snd_davinci_audiocard_dt_ids);
 
 /*
+	Placeholder for auxiliary audio codec (daisy chain) 
+*/
+static struct snd_soc_aux_dev snd_davinci_aux_codec = {
+	.name = "AD1938 Daisy Chained",
+};
+
+/*
 	Audio machine driver
 */
 static struct snd_soc_card snd_davinci_audiocard = {
@@ -235,12 +479,15 @@ static int snd_davinci_audiocard_probe(struct platform_device *pdev)
 	const struct of_device_id *match =
 		of_match_device(of_match_ptr(snd_davinci_audiocard_dt_ids), &pdev->dev);
 	struct snd_soc_dai_link *dai = (struct snd_soc_dai_link *) match->data;
-	struct snd_soc_card_drvdata_davinci *drvdata = NULL;
+	struct ctag_face_drvdata *drvdata = NULL;
 	struct clk *mclk;
 	int ret = 0, bb_device = 0;
 
-
 	snd_davinci_audiocard.dai_link = dai;
+
+	drvdata = devm_kzalloc(&pdev->dev, sizeof(*drvdata), GFP_KERNEL);
+	if (!drvdata)
+		return -ENOMEM;
 
 	/*
 		Parse device tree properties and nodes of Bone Cape for AD1938 AudioCard
@@ -249,10 +496,35 @@ static int snd_davinci_audiocard_probe(struct platform_device *pdev)
 	if (!dai->codec_of_node)
 		return -EINVAL;
 
+	/*
+		Check if CTAG face is running in daisy chain mode (Beast mode)
+	*/
+	snd_davinci_aux_codec.codec_of_node = of_parse_phandle(np, "audio-codec-aux", 0);
+	if (snd_davinci_aux_codec.codec_of_node){
+		snd_davinci_aux_codec.init = snd_davinici_audiocard_aux_codec_init;
+		snd_davinci_audiocard.aux_dev = &snd_davinci_aux_codec;
+		snd_davinci_audiocard.num_aux_devs = 1;
+		drvdata->daisy_chain_enabled = 1;
+
+		ret = of_property_read_u32(np, "audio-codec-aux-bit-delay-dac", &drvdata->ad1938_aux_bit_delay_dac);
+		if (ret < 0){
+			dev_warn(&pdev->dev, "No bit delay defined for auxiliary AD1938 dac. Using bit delay of 1.\n");
+			drvdata->ad1938_aux_bit_delay_dac = 1;
+		}
+		ret = of_property_read_u32(np, "audio-codec-aux-bit-delay-adc", &drvdata->ad1938_aux_bit_delay_adc);
+		if (ret < 0){
+			dev_warn(&pdev->dev, "No bit delay defined for auxiliary AD1938 adc. Using bit delay of 1.\n");
+			drvdata->ad1938_aux_bit_delay_adc = 1;
+		}
+	}
+	else{
+		dev_dbg(&pdev->dev, "using only one audio codec (no daisy chain).\n");
+		drvdata->daisy_chain_enabled = 0;
+	}
+
 	dai->cpu_of_node = of_parse_phandle(np, "mcasp-controller", 0);
 	if (!dai->cpu_of_node)
 		return -EINVAL;
-
 	dai->platform_of_node = dai->cpu_of_node;
 
 	snd_davinci_audiocard.dev = &pdev->dev;
@@ -267,10 +539,6 @@ static int snd_davinci_audiocard_probe(struct platform_device *pdev)
 		dev_dbg(&pdev->dev, "mclk not found.\n");
 		mclk = NULL;
 	}
-
-	drvdata = devm_kzalloc(&pdev->dev, sizeof(*drvdata), GFP_KERNEL);
-	if (!drvdata)
-		return -ENOMEM;
 
 	drvdata->mclk = mclk;
 
@@ -307,7 +575,7 @@ static int snd_davinci_audiocard_probe(struct platform_device *pdev)
 			drvdata->sysclk = clk_get_rate(drvdata->mclk);
 			if (drvdata->sysclk != requestd_rate)
 				dev_warn(&pdev->dev, "Could not get requested rate %u using %u.\n",
-					requestd_rate, drvdata->sysclk);
+				 	requestd_rate, drvdata->sysclk);
 		}
 	}
 	else if (bb_device == 1){ //BeagleBoard-X15
@@ -315,6 +583,32 @@ static int snd_davinci_audiocard_probe(struct platform_device *pdev)
 			Nothing to do (CPU DAI clock is configured in dra7.dtsi)
 		*/
 	}
+
+	/*
+		Get bit delay properties from dt
+	*/
+	/*
+	ret = of_property_read_u32(np, "audio-codec-bit-delay-dac", &drvdata->ad1938_bit_delay_dac);
+	if (ret < 0){
+		dev_warn(&pdev->dev, "No bit delay defined for AD1938 dac. Using bit delay of 1.\n");
+		drvdata->ad1938_bit_delay_dac = 1;
+	}
+	ret = of_property_read_u32(np, "audio-codec-bit-delay-adc", &drvdata->ad1938_bit_delay_adc);
+	if (ret < 0){
+		dev_warn(&pdev->dev, "No bit delay defined for AD1938 adc. Using bit delay of 1.\n");
+		drvdata->ad1938_bit_delay_adc = 1;
+	}
+	ret = of_property_read_u32(np, "mcasp-controller-bit-delay-tx", &drvdata->mcasp_bit_delay_tx);
+	if (ret < 0){
+		dev_warn(&pdev->dev, "No bit delay defined for McASP tx. Using bit delay of 1.\n");
+		drvdata->mcasp_bit_delay_tx = 1;
+	}
+	ret = of_property_read_u32(np, "mcasp-controller-bit-delay-rx", &drvdata->mcasp_bit_delay_rx);
+	if (ret < 0){
+		dev_warn(&pdev->dev, "No bit delay defined for McASP rx. Using bit delay of 1.\n");
+		drvdata->mcasp_bit_delay_rx = 1;
+	}
+	*/
 
 	/*
 		Register AD1938 AudioCard

@@ -15,6 +15,8 @@
  * published by the Free Software Foundation.
  */
 
+#define DEBUG 1
+
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/device.h>
@@ -164,6 +166,27 @@ static void mcasp_set_ctl_reg(struct davinci_mcasp *mcasp, u32 ctl_reg, u32 val)
 
 	if (i == 1000 && ((mcasp_get_reg(mcasp, ctl_reg) & val) != val))
 		printk(KERN_ERR "GBLCTL write error\n");
+}
+
+static int mcasp_read_reg_helper(struct snd_soc_component *component, unsigned int reg, unsigned int *val)
+{
+	struct snd_soc_platform *platform = snd_soc_component_to_platform(component);
+	struct davinci_mcasp *mcasp = snd_soc_platform_get_drvdata(platform);
+
+	*val = mcasp_get_reg(mcasp, reg);
+
+	return 0;
+}
+
+static int mcasp_write_reg_helper(struct snd_soc_component *component, unsigned int reg, unsigned int val)
+{
+	struct snd_soc_platform *platform = snd_soc_component_to_platform(component);
+	struct davinci_mcasp *mcasp = snd_soc_platform_get_drvdata(platform);
+
+	mcasp_set_bits(mcasp, reg, val);
+	mcasp_mod_bits(mcasp, reg, val, 0x30000); // needed to change bit 16 and 17
+
+	return 0;
 }
 
 static bool mcasp_is_synchronous(struct davinci_mcasp *mcasp)
@@ -925,7 +948,7 @@ static int mcasp_i2s_hw_param(struct davinci_mcasp *mcasp, int stream,
 		for (i = 0; i < active_slots; i++)
 			mask |= (1 << i);
 	}
-	mcasp_set_bits(mcasp, DAVINCI_MCASP_ACLKXCTL_REG, TX_ASYNC);
+	mcasp_clr_bits(mcasp, DAVINCI_MCASP_ACLKXCTL_REG, TX_ASYNC);
 
 	if (!mcasp->dat_port)
 		busel = TXSEL;
@@ -948,6 +971,11 @@ static int mcasp_i2s_hw_param(struct davinci_mcasp *mcasp, int stream,
 		if (mcasp_is_synchronous(mcasp) && !mcasp->channels)
 			mcasp_mod_bits(mcasp, DAVINCI_MCASP_TXFMCTL_REG,
 				       FSXMOD(total_slots), FSXMOD(0x1FF));
+	}
+
+	for (i = 0; i < ARRAY_SIZE(context_regs); i++){
+		u32 reg = mcasp_get_reg(mcasp, context_regs[i]);
+		dev_dbg(mcasp->dev, "McASP register (end of hw function): 0x%X:\t0x%X", context_regs[i], reg);
 	}
 
 	return 0;
@@ -1392,6 +1420,12 @@ static int davinci_mcasp_dai_probe(struct snd_soc_dai *dai)
 
 	dai->playback_dma_data = &mcasp->dma_data[SNDRV_PCM_STREAM_PLAYBACK];
 	dai->capture_dma_data = &mcasp->dma_data[SNDRV_PCM_STREAM_CAPTURE];
+
+	/*
+	 * Assign i/o helper functions to component for external register access.
+	 */
+	dai->component->read = mcasp_read_reg_helper;
+	dai->component->write = mcasp_write_reg_helper;
 
 	return 0;
 }
