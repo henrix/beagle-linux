@@ -149,9 +149,6 @@ static int snd_davinici_audiocard_aux_codec_init(struct snd_soc_component *compo
 
 	g_component = component;
 	
-	//regmap_update_bits(codec_aux_regmap, AD193X_DAC_CTRL1,
-	//	AD193X_DAC_CHAN_MASK, AD193X_16_CHANNELS << AD193X_DAC_CHAN_SHFT);
-	
 	/*
 		16 channels, LRCLK / BLCRK slave
 	*/
@@ -240,7 +237,6 @@ static int snd_davinci_audiocard_hw_params(struct snd_pcm_substream *substream,
 		In best case, this should be done once in the init function, 
 		but register access at this time leads to kernel panic.
 	 */
-	/*
 	if (cpu_dai_component->write && cpu_dai_component->read){
 		snd_soc_component_update_bits(cpu_dai_component, DAVINCI_MCASP_TXFMT_REG, 0x30000,
 			((struct ctag_face_drvdata *) snd_soc_card_get_drvdata(soc_card))->mcasp_bit_delay_tx);
@@ -276,7 +272,6 @@ static int snd_davinci_audiocard_hw_params(struct snd_pcm_substream *substream,
 			snd_soc_component_update_bits(codec_dai_component, AD193X_ADC_CTRL1, 0x4, 0x0);
 		break;
 	}
-	*/
 
 	if (daisy_chain_enabled){
 
@@ -587,7 +582,6 @@ static int snd_davinci_audiocard_probe(struct platform_device *pdev)
 	/*
 		Get bit delay properties from dt
 	*/
-	/*
 	ret = of_property_read_u32(np, "audio-codec-bit-delay-dac", &drvdata->ad1938_bit_delay_dac);
 	if (ret < 0){
 		dev_warn(&pdev->dev, "No bit delay defined for AD1938 dac. Using bit delay of 1.\n");
@@ -608,7 +602,6 @@ static int snd_davinci_audiocard_probe(struct platform_device *pdev)
 		dev_warn(&pdev->dev, "No bit delay defined for McASP rx. Using bit delay of 1.\n");
 		drvdata->mcasp_bit_delay_rx = 1;
 	}
-	*/
 
 	/*
 		Register AD1938 AudioCard
