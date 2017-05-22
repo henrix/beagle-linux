@@ -482,6 +482,7 @@ dtb-$(CONFIG_SOC_AM33XX) += \
 	am335x-boneblack-lcd-ct43.dtb \
 	am335x-vsc8531bbb.dtb \
 	am335x-bone-bela.dtb \
+	am335x-bone-bela-green-wireless.dtb \
 	am335x-bonegreen-ctag-face.dtb \
 	am335x-boneblack-ctag-face.dtb \
 	am335x-sancloud-bbe.dtb \
