@@ -236,7 +236,10 @@ static int snd_davinci_audiocard_hw_params(struct snd_pcm_substream *substream,
 		device tree overlay properties (required due to isolator delays).
 		In best case, this should be done once in the init function, 
 		but register access at this time leads to kernel panic.
+		Leads to problems with some sound cards.
+		Bit delay is configured automatically based on sample rate.
 	 */
+	/*
 	if (cpu_dai_component->write && cpu_dai_component->read){
 		snd_soc_component_update_bits(cpu_dai_component, DAVINCI_MCASP_TXFMT_REG, 0x30000,
 			((struct ctag_face_drvdata *) snd_soc_card_get_drvdata(soc_card))->mcasp_bit_delay_tx);
@@ -246,6 +249,17 @@ static int snd_davinci_audiocard_hw_params(struct snd_pcm_substream *substream,
 	else{
 		dev_warn(cpu_dai->dev, "McASP driver does not offer functions for register access. Could not set bit delay settings in machine driver.\n");
 	}
+	*/
+	/*
+	if (params_rate(params) == 96000){ // Use bit delay of one bit
+		snd_soc_component_update_bits(codec_dai_component, AD193X_DAC_CTRL0, 0x8, 0x0);
+		snd_soc_component_update_bits(codec_dai_component, AD193X_ADC_CTRL1, 0x4, 0x0);
+	}
+	else { // Use bit delay of zero bits
+		snd_soc_component_update_bits(codec_dai_component, AD193X_DAC_CTRL0, 0x8, 0x8);
+		snd_soc_component_update_bits(codec_dai_component, AD193X_ADC_CTRL1, 0x4, 0x4);
+	}
+	*/
 
 	switch(((struct ctag_face_drvdata *) snd_soc_card_get_drvdata(soc_card))->ad1938_bit_delay_dac){
 		case 0:
@@ -286,6 +300,17 @@ static int snd_davinci_audiocard_hw_params(struct snd_pcm_substream *substream,
 			((struct ctag_face_drvdata *) snd_soc_card_get_drvdata(soc_card))->ad1938_aux_bit_delay_dac);
 		snd_soc_component_update_bits(g_component, AD193X_ADC_CTRL1, 0x4,
 			((struct ctag_face_drvdata *) snd_soc_card_get_drvdata(soc_card))->ad1938_aux_bit_delay_adc);
+
+		/*
+		if (params_rate(params) == 96000){ // Use bit delay of one bit
+			snd_soc_component_update_bits(g_component, AD193X_DAC_CTRL0, 0x8, 0x0);
+			snd_soc_component_update_bits(g_component, AD193X_ADC_CTRL1, 0x4, 0x0);
+		}
+		else { // Use bit delay of zero bits
+			snd_soc_component_update_bits(g_component, AD193X_DAC_CTRL0, 0x8, 0x8);
+			snd_soc_component_update_bits(g_component, AD193X_ADC_CTRL1, 0x4, 0x4);
+		}
+		*/
 
 		/* Set bit delay for auxiliary AD1938 codec (slave codec). */
 		switch(((struct ctag_face_drvdata *) snd_soc_card_get_drvdata(soc_card))->ad1938_bit_delay_dac){

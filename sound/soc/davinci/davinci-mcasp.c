@@ -1142,6 +1142,16 @@ static int davinci_mcasp_hw_params(struct snd_pcm_substream *substream,
 		ret = mcasp_i2s_hw_param(mcasp, substream->stream,
 					 channels);
 
+	if (params_rate(params) == 96000){
+		// Set McASP bit delay to zero (required for CTAG face audio card due to isolator delays.
+		mcasp_mod_bits(mcasp, DAVINCI_MCASP_TXFMT_REG, FSXDLY(0), FSXDLY(3));
+	}
+	else { 
+		// Use default bit delay of one bit.
+		mcasp_mod_bits(mcasp, DAVINCI_MCASP_TXFMT_REG, FSXDLY(1), FSXDLY(3));
+	}
+
+
 	if (ret)
 		return ret;
 
