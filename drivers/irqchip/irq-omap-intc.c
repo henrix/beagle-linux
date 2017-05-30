@@ -340,8 +340,8 @@ static int __init omap_init_irq(u32 base, struct device_node *node)
 		ret = omap_init_irq_legacy(base, NULL);
 	}
 
-	if (ret == 0)
-		omap_irq_enable_protection();
+	//if (ret == 0)
+	//	omap_irq_enable_protection();
 
 	return ret;
 }
