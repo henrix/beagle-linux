@@ -152,20 +152,18 @@ static int snd_davinici_audiocard_aux_codec_init(struct snd_soc_component *compo
 	/*
 		16 channels, LRCLK / BLCRK slave
 	*/
-	snd_soc_component_write(component, AD193X_PLL_CLK_CTRL0, 0xA4); //0xA4
+	snd_soc_component_write(component, AD193X_PLL_CLK_CTRL0, 0xA4); //May has to be changed to A4 (dlrclk as input)
 	snd_soc_component_write(component, AD193X_PLL_CLK_CTRL1, 0x00);
 	snd_soc_component_write(component, AD193X_DAC_CTRL0, 0x40);
 	snd_soc_component_write(component, AD193X_DAC_CTRL1, 0x0e);
 	snd_soc_component_write(component, AD193X_DAC_CTRL2, 0x00);
 	snd_soc_component_write(component, AD193X_ADC_CTRL1, 0x23);
-	snd_soc_component_write(component, AD193X_ADC_CTRL2, 0x34); //7C
+	snd_soc_component_write(component, AD193X_ADC_CTRL2, 0x34);
 
 	for(i=0; i<=16; i++){
 		snd_soc_component_read(component , i, &ret) ;
 		dev_dbg(component->dev, "AD193X DC init register %d:\t0x%x\n", i, ret);
 	}
-
-	
 
 	/* Set TDM slots, sample rate, ...*/
 
@@ -231,36 +229,6 @@ static int snd_davinci_audiocard_hw_params(struct snd_pcm_substream *substream,
 	}
 	dev_dbg(cpu_dai->dev, "Set CPU DAI clock rate to %d.\n", cpu_clock);
 
-	/*
-		Configure bit delay in McASP and AD1938 codec according to 
-		device tree overlay properties (required due to isolator delays).
-		In best case, this should be done once in the init function, 
-		but register access at this time leads to kernel panic.
-		Leads to problems with some sound cards.
-		Bit delay is configured automatically based on sample rate.
-	 */
-	/*
-	if (cpu_dai_component->write && cpu_dai_component->read){
-		snd_soc_component_update_bits(cpu_dai_component, DAVINCI_MCASP_TXFMT_REG, 0x30000,
-			((struct ctag_face_drvdata *) snd_soc_card_get_drvdata(soc_card))->mcasp_bit_delay_tx);
-		snd_soc_component_update_bits(cpu_dai_component, DAVINCI_MCASP_RXFMT_REG, 0x30000,
-			((struct ctag_face_drvdata *) snd_soc_card_get_drvdata(soc_card))->mcasp_bit_delay_rx);
-	}
-	else{
-		dev_warn(cpu_dai->dev, "McASP driver does not offer functions for register access. Could not set bit delay settings in machine driver.\n");
-	}
-	*/
-	/*
-	if (params_rate(params) == 96000){ // Use bit delay of one bit
-		snd_soc_component_update_bits(codec_dai_component, AD193X_DAC_CTRL0, 0x8, 0x0);
-		snd_soc_component_update_bits(codec_dai_component, AD193X_ADC_CTRL1, 0x4, 0x0);
-	}
-	else { // Use bit delay of zero bits
-		snd_soc_component_update_bits(codec_dai_component, AD193X_DAC_CTRL0, 0x8, 0x8);
-		snd_soc_component_update_bits(codec_dai_component, AD193X_ADC_CTRL1, 0x4, 0x4);
-	}
-	*/
-
 	switch(((struct ctag_face_drvdata *) snd_soc_card_get_drvdata(soc_card))->ad1938_bit_delay_dac){
 		case 0:
 			snd_soc_component_update_bits(codec_dai_component, AD193X_DAC_CTRL0, 0x8, 0x8);
@@ -289,28 +257,17 @@ static int snd_davinci_audiocard_hw_params(struct snd_pcm_substream *substream,
 
 	if (daisy_chain_enabled){
 
-		snd_soc_component_write(g_component, AD193X_PLL_CLK_CTRL0, 0xA4); //A4
+		snd_soc_component_write(g_component, AD193X_PLL_CLK_CTRL0, 0xA4); //May has to be changed to A4 (dlrclk as input)
 		snd_soc_component_write(g_component, AD193X_PLL_CLK_CTRL1, 0x00);
 		snd_soc_component_write(g_component, AD193X_DAC_CTRL0, 0x40);
 		snd_soc_component_write(g_component, AD193X_DAC_CTRL1, 0x0e);
 		snd_soc_component_write(g_component, AD193X_DAC_CTRL2, 0x00);
 		snd_soc_component_write(g_component, AD193X_ADC_CTRL1, 0x23);
-		snd_soc_component_write(g_component, AD193X_ADC_CTRL2, 0x34); //7C
+		snd_soc_component_write(g_component, AD193X_ADC_CTRL2, 0x34);
 		snd_soc_component_update_bits(g_component, AD193X_DAC_CTRL0, 0x8,
 			((struct ctag_face_drvdata *) snd_soc_card_get_drvdata(soc_card))->ad1938_aux_bit_delay_dac);
 		snd_soc_component_update_bits(g_component, AD193X_ADC_CTRL1, 0x4,
 			((struct ctag_face_drvdata *) snd_soc_card_get_drvdata(soc_card))->ad1938_aux_bit_delay_adc);
-
-		/*
-		if (params_rate(params) == 96000){ // Use bit delay of one bit
-			snd_soc_component_update_bits(g_component, AD193X_DAC_CTRL0, 0x8, 0x0);
-			snd_soc_component_update_bits(g_component, AD193X_ADC_CTRL1, 0x4, 0x0);
-		}
-		else { // Use bit delay of zero bits
-			snd_soc_component_update_bits(g_component, AD193X_DAC_CTRL0, 0x8, 0x8);
-			snd_soc_component_update_bits(g_component, AD193X_ADC_CTRL1, 0x4, 0x4);
-		}
-		*/
 
 		/* Set bit delay for auxiliary AD1938 codec (slave codec). */
 		switch(((struct ctag_face_drvdata *) snd_soc_card_get_drvdata(soc_card))->ad1938_bit_delay_dac){
