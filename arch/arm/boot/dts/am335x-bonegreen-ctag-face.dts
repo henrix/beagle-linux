@@ -14,6 +14,8 @@
 #include "am33xx.dtsi"
 #include "am335x-bone-common.dtsi"
 //#include "am33xx-overlay-edma-fix.dtsi" // leads to problems with SPI
+#include "am33xx-pruss-uio.dtsi"
+//#include "am33xx-pruss-rproc.dtsi"
 
 / {
 	model = "TI AM335x BeagleBone Green AudioCard";
@@ -93,6 +95,20 @@
 			0x06c (PIN_INPUT_PULLDOWN | MUX_MODE7)	/* gpio1[27] */
 		>;
 	};
+
+	/* Pinmux for PRU */
+	bela_pru_pins: pinmux_bela_pru_pins {
+		pinctrl-single,pins = <
+			0x0b0 0x25 /* pr1_pru1_pru_r30_4, 	P8_41 | MODE5 | INPUT_PULLDOWN */
+			0x0b4 0x25 /* pr1_pru1_pru_r30_5, 	P8_42 | MODE5 | INPUT_PULLDOWN */
+			0x0ac 0x25 /* pr1_pru1_pru_r30_3, 	P8_44 | MODE5 | INPUT_PULLDOWN */
+			0x0a0 0x25 /* pr1_pru1_pru_r30_0, 	P8_45 | MODE5 | INPUT_PULLDOWN */
+			0x0a4 0x25 /* pr1_pru1_pru_r30_1, 	P8_46 | MODE5 | INPUT_PULLDOWN */
+			0x0a8 0x25 /* pr1_pru1_pru_r30_2, 	P8_43 | MODE5 | INPUT_PULLDOWN */
+			/* Is needed for pin multiplexing Bela button correctly */
+			0x1a4 0x37 /* gpio3[19], 			P9_27 | MODE7 | INPUT_PULLUP */
+		>;
+	};
 };
 
 &mcasp0	{
@@ -121,5 +137,20 @@
 	      compatible = "gpio-gate-clock";
 	      clocks = <&clk_mcasp0_fixed>;
 	      enable-gpios = <&gpio1 27 0>; /* BeagleBone Black Clk enable on GPIO1_27 */
+	};
+};
+
+/* PRU config */
+&pruss {
+	pinctrl-names = "default";
+	pinctrl-0 = <&bela_pru_pins>;
+	
+	status = "okay";
+
+	/* Workaround for uio_pruss.c on 4.4.62 to prevent "No Children" error */
+	bela_pru_pins {
+		pin-names = "dummy";
+		gpios = <&gpio1 1 2>;
+		#gpio-cells = <2>;
 	};
 };

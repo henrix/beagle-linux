@@ -230,7 +230,10 @@ static void mcasp_start_rx(struct davinci_mcasp *mcasp)
 
 	/* enable receive IRQs */
 	mcasp_set_bits(mcasp, DAVINCI_MCASP_EVTCTLR_REG,
-		       mcasp->irq_request[SNDRV_PCM_STREAM_CAPTURE]);
+		       mcasp->irq_request[SNDRV_PCM_STREAM_CAPTURE]/* | 0x80*/);
+	//mcasp_set_bits(mcasp, DAVINCI_MCASP_EVTCTLR_REG, 0xBF); // here are ALL interrupts enabled
+
+	dev_dbg(mcasp->dev, "Receive interrupts in McASP has been enabled: 0x%X", mcasp_get_reg(mcasp, DAVINCI_MCASP_EVTCTLR_REG));
 }
 
 static void mcasp_start_tx(struct davinci_mcasp *mcasp)
@@ -263,7 +266,10 @@ static void mcasp_start_tx(struct davinci_mcasp *mcasp)
 
 	/* enable transmit IRQs */
 	mcasp_set_bits(mcasp, DAVINCI_MCASP_EVTCTLX_REG,
-		       mcasp->irq_request[SNDRV_PCM_STREAM_PLAYBACK]);
+		       mcasp->irq_request[SNDRV_PCM_STREAM_PLAYBACK]/* | 0x80*/);
+	//mcasp_set_bits(mcasp, DAVINCI_MCASP_EVTCTLX_REG, 0xBF); // here are ALL interrupts enabled
+
+	dev_dbg(mcasp->dev, "Transmit interrupts in McASP has been enabled: 0x%X", mcasp_get_reg(mcasp, DAVINCI_MCASP_EVTCTLX_REG));
 }
 
 static void davinci_mcasp_start(struct davinci_mcasp *mcasp, int stream)
@@ -280,7 +286,10 @@ static void mcasp_stop_rx(struct davinci_mcasp *mcasp)
 {
 	/* disable IRQ sources */
 	mcasp_clr_bits(mcasp, DAVINCI_MCASP_EVTCTLR_REG,
-		       mcasp->irq_request[SNDRV_PCM_STREAM_CAPTURE]);
+		       mcasp->irq_request[SNDRV_PCM_STREAM_CAPTURE] /*| 0x80*/);
+	//mcasp_clr_bits(mcasp, DAVINCI_MCASP_EVTCTLR_REG, 0xBF);
+
+	dev_dbg(mcasp->dev, "Receive interrupts in McASP has been disabled: 0x%X", mcasp_get_reg(mcasp, DAVINCI_MCASP_EVTCTLR_REG));
 
 	/*
 	 * In synchronous mode stop the TX clocks if no other stream is
@@ -305,7 +314,10 @@ static void mcasp_stop_tx(struct davinci_mcasp *mcasp)
 
 	/* disable IRQ sources */
 	mcasp_clr_bits(mcasp, DAVINCI_MCASP_EVTCTLX_REG,
-		       mcasp->irq_request[SNDRV_PCM_STREAM_PLAYBACK]);
+		       mcasp->irq_request[SNDRV_PCM_STREAM_PLAYBACK] /*| 0x80*/);
+	//mcasp_clr_bits(mcasp, DAVINCI_MCASP_EVTCTLX_REG, 0xBF);
+
+	dev_dbg(mcasp->dev, "Transmit interrupts in McASP has been disabled: 0x%X", mcasp_get_reg(mcasp, DAVINCI_MCASP_EVTCTLX_REG));
 
 	/*
 	 * In synchronous mode keep TX clocks running if the capture stream is
@@ -349,10 +361,10 @@ static irqreturn_t davinci_mcasp_tx_irq_handler(int irq, void *data)
 
 		substream = mcasp->substreams[SNDRV_PCM_STREAM_PLAYBACK];
 		if (substream) {
-			snd_pcm_stream_lock_irq(substream);
-			if (snd_pcm_running(substream))
-				snd_pcm_stop(substream, SNDRV_PCM_STATE_XRUN);
-			snd_pcm_stream_unlock_irq(substream);
+			//snd_pcm_stream_lock_irq(substream);
+			//if (snd_pcm_running(substream))
+			//	snd_pcm_stop(substream, SNDRV_PCM_STATE_XRUN);
+			//snd_pcm_stream_unlock_irq(substream);
 		}
 	}
 
@@ -364,7 +376,7 @@ static irqreturn_t davinci_mcasp_tx_irq_handler(int irq, void *data)
 		handled_mask |= XRERR;
 
 	/* Ack the handled event only */
-	mcasp_set_reg(mcasp, DAVINCI_MCASP_TXSTAT_REG, handled_mask);
+	//mcasp_set_reg(mcasp, DAVINCI_MCASP_TXSTAT_REG, handled_mask);
 
 	return IRQ_RETVAL(handled_mask);
 }
